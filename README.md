@@ -4,8 +4,8 @@ It is a django module that allow send your information stored in your database t
 
 Install
 =======
-Edit ´´´settings.py´´´ and add:
-´´´
+Edit ```settings.py``` and add:
+```
 INSTALLED_APPS = (
   ...
   'django.contrib.admin',
@@ -17,7 +17,7 @@ INSTALLED_APPS = (
 # Used for storage certs and keys
 PRIVATE_ROOT = /path/to/private/files/storage
 # Test Example: PRIVATE_ROOT = os.path.join(BASE_DIR, 'private')
-´´´
+```
 
 Setting Up
 ==========
@@ -29,14 +29,18 @@ Just add or edit a MQTTData model and the system will be send the information to
 Attach signals
 ==============
 You can also attach django Signals for publisher and disconnection.
-´´´
+```
 def on_disconnect(sender, client, userdata, rc):
-    if isinstance(obj, MQTTClient):
-        raise Att
+    if not isinstance(obj, MQTTClient):
+        raise AttributeError('client must be MQTTClient object')
 mqtt_disconnect.connect(receiver=on_disconnect, sender=MQTTServer, dispatch_uid='my_django_mqtt_on_disconnect')
 
 def on_publish(sender, client, userdata, mid):
-    pass
+    if not isinstance(obj, MQTTClient):
+        raise AttributeError('client must be MQTTClient object')
 mqtt_publish.connect(receiver=on_publish, sender=MQTTClient, dispatch_uid='my_django_mqtt_on_publish')
+```
 
-´´´
+MQTT Test Brokens
+=================
+You can use the [mosquitto test server](http://test.mosquitto.org/) ```test.mosquitto.org```. See the [mosquitto test server website](http://test.mosquitto.org/) for information about the broken configuration
