@@ -1,0 +1,3 @@
+virtualenv
+django
+paho-mqtt
