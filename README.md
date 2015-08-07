@@ -44,3 +44,29 @@ mqtt_publish.connect(receiver=on_publish, sender=MQTTClient, dispatch_uid='my_dj
 MQTT Test Brokens
 =================
 You can use the [mosquitto test server](http://test.mosquitto.org/) ```test.mosquitto.org```. See the [mosquitto test server website](http://test.mosquitto.org/) for information about the broken configuration
+
+
+Configure Mosquitto for use Django users
+========================================
+Thanks to [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug) you can configure Mosquitto for connect with externals Auth systems.
+
+For active Django Auth system edit your ```urls.py``` and add:
+```
+urlpatterns = patterns(
+    ...
+    url(r'^mqtt/', include('django_mqtt.urls')),
+    ...
+)
+```
+
+For active Mosquito Auth Plugin edit ```mosquitto.conf``` and add:
+```
+auth_plugin /path/to/auth-plug.so
+
+auth_opt_backends http
+auth_opt_http_ip 127.0.0.1
+auth_opt_http_port 8000
+auth_opt_http_getuser_uri /mqtt/auth
+auth_opt_http_superuser_uri /mqtt/superuser
+auth_opt_http_aclcheck_uri /mqtt/acl
+```
