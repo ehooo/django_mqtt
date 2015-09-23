@@ -2,6 +2,7 @@ Django-MQTT
 ===========
 It is a django module that allow send your information stored in your database to MQTT server as MQTT Publisher.
 
+
 Install
 =======
 Edit ```settings.py``` and add:
@@ -18,6 +19,7 @@ INSTALLED_APPS = (
 PRIVATE_ROOT = /path/to/private/files/storage
 # Test Example: PRIVATE_ROOT = os.path.join(BASE_DIR, 'private')
 ```
+
 
 Setting Up
 ==========
@@ -46,8 +48,8 @@ MQTT Test Brokens
 You can use the [mosquitto test server](http://test.mosquitto.org/) ```test.mosquitto.org```. See the [mosquitto test server website](http://test.mosquitto.org/) for information about the broken configuration
 
 
-Configure Mosquitto for use Django users
-========================================
+Configure Mosquitto for use Django Auth
+=======================================
 Thanks to [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug) you can configure Mosquitto for connect with externals Auth systems.
 
 For active Django Auth system edit your ```urls.py``` and add:

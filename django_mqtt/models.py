@@ -12,10 +12,13 @@ mqtt_publish = django.dispatch.Signal(providing_args=["client", "userdata", "mid
 mqtt_disconnect = django.dispatch.Signal(providing_args=["client", "userdata", "rc"])
 
 
-def get_mqtt_client(client):
+def get_mqtt_client(client, empty_client_id=False):
     if not isinstance(client, MQTTClient):
         raise AttributeError('client must by instance of %s' % MQTTClient.__class__)
-    cli = mqtt.Client(client.client_id, client.clean_session, protocol=client.server.protocol)
+    client_id = client.client_id
+    if empty_client_id:
+        client_id = None
+    cli = mqtt.Client(client_id, client.clean_session, protocol=client.server.protocol)
 
     if client.server.secure:
         tls_args = {
