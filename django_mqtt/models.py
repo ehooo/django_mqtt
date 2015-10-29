@@ -1,41 +1,18 @@
+from django_mqtt.signals import *
+
 from django.core.files.storage import FileSystemStorage
+from django.dispatch import Signal
 from django.conf import settings
 from django.db import models
-from django.db.models.signals import post_save
-import django.dispatch
 
 import paho.mqtt.client as mqtt
 import ssl
 import socket
 
-mqtt_pre_publish = django.dispatch.Signal(providing_args=["client", "topic", "payload", "qos", "retain"])
-mqtt_publish = django.dispatch.Signal(providing_args=["client", "userdata", "mid"])
-mqtt_disconnect = django.dispatch.Signal(providing_args=["client", "userdata", "rc"])
-
-
-def get_mqtt_client(client, empty_client_id=False):
-    if not isinstance(client, MQTTClient):
-        raise AttributeError('client must by instance of %s' % MQTTClient.__class__)
-    client_id = client.client_id
-    if empty_client_id:
-        client_id = None
-    cli = mqtt.Client(client_id, client.clean_session, protocol=client.server.protocol)
-
-    if client.server.secure:
-        tls_args = {
-            'cert_reqs': client.server.secure.cert_reqs,
-            'tls_version': client.server.secure.tls_version,
-            'ciphers': client.server.secure.ciphers
-        }
-        if client.server.secure.certfile:  # TODO check the path
-            tls_args['certfile'] = client.server.secure.certfile.name
-        if client.server.secure.keyfile:
-            tls_args['keyfile'] = client.server.secure.keyfile.path
-        cli.tls_set(client.server.secure.ca_certs, **tls_args)
-
-    if client.auth:
-        cli.username_pw_set(client.auth.user, client.auth.password)
-    return cli
+mqtt_connect = Signal(providing_args=["client"])
+mqtt_pre_publish = Signal(providing_args=["client", "topic", "payload", "qos", "retain"])
+mqtt_publish = Signal(providing_args=["client", "userdata", "mid"])
+mqtt_disconnect = Signal(providing_args=["client", "userdata", "rc"])
 
 PROTO_MQTT_CONN_OK = 0
 PROTO_MQTT_CONN_ERROR_PROTO_VERSION = 1
@@ -61,73 +38,6 @@ PROTO_MQTT_CONN_ERROR_TOO_LONG = 211
 PROTO_MQTT_CONN_ERROR_DOWN = 212
 PROTO_MQTT_CONN_ERROR_UNREACHABLE = 213
 
-
-def update_mqtt_data(sender, **kwargs):
-    is_new = False
-    obj = kwargs["instance"]
-    if isinstance(obj, MQTTData):
-        if kwargs["created"]:
-            is_new = True
-        if is_new:
-            pass
-        cli = get_mqtt_client(obj.client)
-        try:
-            cli.connect(obj.client.server.host, obj.client.server.port, obj.client.keepalive)
-            mqtt_pre_publish.send(sender=MQTTData.__class__, client=obj.client,
-                                  topic=obj.topic, payload=obj.payload, qos=obj.qos, retain=obj.retain)
-            (rc, mid) = cli.publish(obj.topic, obj.payload, obj.qos, obj.retain)
-
-            obj.client.server.status = rc
-            obj.client.server.save()
-            mqtt_publish.send(sender=MQTTClient.__class__, client=obj.client, userdata=cli._userdata, mid=mid)
-            cli.loop_write()
-            if not obj.client.client_id:
-                obj.client.client_id = cli._client_id
-                obj.client.save()
-            cli.disconnect()
-            mqtt_disconnect.send(sender=MQTTServer.__class__, client=obj.client, userdata=cli._userdata, rc=rc)
-        except socket.gaierror as ex:
-            # See PROTO_MQTT_CONN_ERROR
-            if ex.errno == 11004:
-                obj.client.server.status = 191
-            else:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
-            obj.client.server.save()
-        except IOError as ex:
-            # See in socket: WSA error codes
-            if ex.errno == 10004:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_INTERRUPTED
-            elif ex.errno == 10013:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED
-            elif ex.errno == 10014:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_FAULT_NETWORK
-            elif ex.errno == 10022:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_INVALID
-            elif ex.errno == 10035:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCK
-            elif ex.errno == 10036:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCKING
-            elif ex.errno == 10048:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_IN_USE
-            elif ex.errno == 10054:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_RESET
-            elif ex.errno == 10058:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_SHUTDOWN
-            elif ex.errno == 10060:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_TIMEOUT
-            elif ex.errno == 10061:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_REFUSED
-            elif ex.errno == 10063:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_TOO_LONG
-            elif ex.errno == 10064:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_DOWN
-            elif ex.errno == 10065:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_UNREACHABLE
-            else:
-                obj.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
-            obj.client.server.save()
-
-
 CERT_REQS = (
     (ssl.CERT_REQUIRED, 'Required'),
     (ssl.CERT_OPTIONAL, 'Optional'),
@@ -147,12 +57,6 @@ PROTO_MQTT_QoS = (
     (0, 'QoS 0: Delivered at most once'),
     (1, 'QoS 1: Always delivered at least once'),
     (2, 'QoS 2: Always delivered exactly once'),
-)
-PROTO_MQTT_ACC_SUS = 1
-PROTO_MQTT_ACC_PUB = 2
-PROTO_MQTT_ACC = (
-    (PROTO_MQTT_ACC_SUS, 'Suscriptor'),
-    (PROTO_MQTT_ACC_PUB, 'Publisher'),
 )
 PROTO_MQTT_CONN_STATUS = (
     (PROTO_MQTT_CONN_OK, 'Connection successful'),
@@ -288,6 +192,27 @@ class MQTTClient(models.Model):
     def __unicode__(self):
         return "%s - %s" % (self.client_id, self.server)
 
+    def get_mqtt_client(self, empty_client_id=False):
+        client_id = self.client_id
+        if empty_client_id:
+            client_id = None
+        cli = mqtt.Client(client_id, self.clean_session, protocol=self.server.protocol)
+        if self.server.secure:
+            tls_args = {
+                'cert_reqs': self.server.secure.cert_reqs,
+                'tls_version': self.server.secure.tls_version,
+                'ciphers': self.server.secure.ciphers
+            }
+            if self.server.secure.certfile:  # TODO check the path
+                tls_args['certfile'] = self.server.secure.certfile.name
+            if self.server.secure.keyfile:
+                tls_args['keyfile'] = self.server.secure.keyfile.path
+            cli.tls_set(self.server.secure.ca_certs, **tls_args)
+
+        if self.auth:
+            cli.username_pw_set(self.auth.user, self.auth.password)
+        return cli
+
 
 class MQTTData(models.Model):
     """
@@ -321,11 +246,60 @@ class MQTTData(models.Model):
     def __unicode__(self):
         return "%s - %s - %s" % (self.payload, self.topic, self.client)
 
-post_save.connect(receiver=update_mqtt_data, sender=MQTTData, dispatch_uid='django_mqtt_update_signal')
-
-
-class MQTT_ACL(models.Model):
-    allow = models.BooleanField(default=True)
-    topic = models.CharField(max_length=1024)
-    acc = models.IntegerField(choices=PROTO_MQTT_ACC)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True)
+    def update_remote(self):
+        cli = self.client.get_mqtt_client()
+        try:
+            mqtt_connect.send(sender=MQTTServer.__class__, client=self.client)
+            cli.connect(self.client.server.host, self.client.server.port, self.client.keepalive)
+            mqtt_pre_publish.send(sender=MQTTData.__class__, client=self.client,
+                                  topic=self.topic, payload=self.payload, qos=self.qos, retain=self.retain)
+            (rc, mid) = cli.publish(self.topic, self.payload, self.qos, self.retain)
+            self.client.server.status = rc
+            self.client.server.save()
+            mqtt_publish.send(sender=MQTTClient.__class__, client=self.client, userdata=cli._userdata, mid=mid)
+            cli.loop_write()
+            if not self.client.client_id:
+                self.client.client_id = cli._client_id
+                self.client.save()
+            cli.disconnect()
+            mqtt_disconnect.send(sender=MQTTServer.__class__, client=self.client, userdata=cli._userdata, rc=rc)
+        except socket.gaierror as ex:
+            # See PROTO_MQTT_CONN_ERROR
+            if ex.errno == 11004:
+                self.client.server.status = 191
+            else:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
+            self.client.server.save()
+        except IOError as ex:
+            # See in socket: WSA error codes
+            if ex.errno == 10004:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_INTERRUPTED
+            elif ex.errno == 10013:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED
+            elif ex.errno == 10014:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_FAULT_NETWORK
+            elif ex.errno == 10022:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_INVALID
+            elif ex.errno == 10035:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCK
+            elif ex.errno == 10036:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCKING
+            elif ex.errno == 10048:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_IN_USE
+            elif ex.errno == 10054:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_RESET
+            elif ex.errno == 10058:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_SHUTDOWN
+            elif ex.errno == 10060:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_TIMEOUT
+            elif ex.errno == 10061:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_REFUSED
+            elif ex.errno == 10063:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_TOO_LONG
+            elif ex.errno == 10064:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_DOWN
+            elif ex.errno == 10065:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_UNREACHABLE
+            else:
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
+            self.client.server.save()

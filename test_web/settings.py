@@ -36,6 +36,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_mqtt.mosquitto.auth_plugin',
     'django_mqtt',
 )
 

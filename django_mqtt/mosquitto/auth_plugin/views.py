@@ -1,11 +1,11 @@
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden
 from django.views.generic.base import View
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from django.conf import settings
 
-from django_mqtt.models import MQTT_ACL, PROTO_MQTT_ACC_SUS, PROTO_MQTT_ACC_PUB
+from django_mqtt.mosquitto.auth_plugin.models import MQTT_ACL
 
 
 class MQTTAuth(View):
@@ -51,10 +51,13 @@ class MQTTAcl(View):
         if hasattr(settings, 'MQTT_ACL_ALLOW'):
             allow = settings.MQTT_ACL_ALLOW
         try:
-            user = User.objects.get(username=request.DATA.get('username'))
             topic = request.DATA.get('topic', None)
             acc = request.DATA.get('acc', None)
-            acl = MQTT_ACL.objects.get(user=user, acc=acc, topic=topic)
+            acl = MQTT_ACL.objects.filter(acc=acc, topic=topic)
+            def_acl = acl.filter(user__isnull=True).first()
+            if def_acl:
+                allow = def_acl.allow
+            acl = acl.filter(user=User.objects.get(username=request.DATA.get('username'))).first()
             allow = acl.allow
         except MQTT_ACL.DoesNotExist:
             pass
