@@ -1,5 +1,5 @@
 from django.conf.urls import patterns, url
-import django_mqtt.views as views
+import django_mqtt.mosquitto.auth_plugin.views as views
 
 urlpatterns = patterns(
     '',
