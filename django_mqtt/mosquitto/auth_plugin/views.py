@@ -57,10 +57,10 @@ class MQTTAcl(View):
             def_acl = acl.filter(user__isnull=True).first()
             if def_acl:
                 allow = def_acl.allow
-            acl = acl.filter(user=User.objects.get(username=request.DATA.get('username'))).first()
-            allow = acl.allow
-        except MQTT_ACL.DoesNotExist:
-            pass
+            user = User.objects.get(username=request.DATA.get('username'))
+            user_allow = acl.filter(user=user).first()
+            if user_allow:
+                allow = user_allow.allow
         except User.DoesNotExist:
             if allow and hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
                 allow = settings.MQTT_ACL_ALLOW_ANONIMOUS

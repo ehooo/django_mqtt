@@ -12,7 +12,7 @@ INSTALLED_APPS = (
   'django.contrib.admin',
   'django.contrib.auth',
   ...
-  'django_mqtt.mosquito.auth_plugin',
+  'django_mqtt.mosquitto.auth_plugin',
   'django_mqtt',
   ...
 )
@@ -50,6 +50,7 @@ Attach signals
 You can also attach django Signals for monitoring publisher, connection and disconnection.
 ```
 from django_mqtt.models import *
+from django_mqtt.signals import *
 
 def before_connect(sender, client):
     if not isinstance(client, MQTTClient):
@@ -82,7 +83,7 @@ For active Django Auth system edit your ```urls.py``` and add:
 ```
 urlpatterns = patterns(
     ...
-    url(r'^mqtt/', include('django_mqtt.moquito.auth_plug.urls')),
+    url(r'^mqtt/', include('django_mqtt.mosquitto.auth_plug.urls')),
     ...
 )
 ```
