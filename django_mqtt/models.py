@@ -1,7 +1,6 @@
 from django_mqtt.signals import *
 
 from django.core.files.storage import FileSystemStorage
-from django.dispatch import Signal
 from django.conf import settings
 from django.db import models
 
@@ -9,10 +8,6 @@ import paho.mqtt.client as mqtt
 import ssl
 import socket
 
-mqtt_connect = Signal(providing_args=["client"])
-mqtt_pre_publish = Signal(providing_args=["client", "topic", "payload", "qos", "retain"])
-mqtt_publish = Signal(providing_args=["client", "userdata", "mid"])
-mqtt_disconnect = Signal(providing_args=["client", "userdata", "rc"])
 
 PROTO_MQTT_CONN_OK = 0
 PROTO_MQTT_CONN_ERROR_PROTO_VERSION = 1
