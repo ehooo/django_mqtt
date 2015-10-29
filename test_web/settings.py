@@ -50,7 +50,9 @@ MIDDLEWARE_CLASSES = (
 )
 
 ROOT_URLCONF = 'test_web.urls'
-PRIVATE_ROOT = os.path.join(BASE_DIR, 'private')
+MQTT_CERTS_ROOT = os.path.join(BASE_DIR, 'private')
+MQTT_ACL_ALLOW = False
+MQTT_ACL_ALLOW_ANONIMOUS = MQTT_ACL_ALLOW
 
 WSGI_APPLICATION = 'test_web.wsgi.application'
 

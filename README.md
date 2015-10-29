@@ -45,7 +45,8 @@ mqtt_publish.connect(receiver=on_publish, sender=MQTTClient, dispatch_uid='my_dj
 
 MQTT Test Brokens
 =================
-You can use the [mosquitto test server](http://test.mosquitto.org/) ```test.mosquitto.org```. See the [mosquitto test server website](http://test.mosquitto.org/) for information about the broken configuration
+You can use the [mosquitto test server](http://test.mosquitto.org/) ```test.mosquitto.org```.
+See the [mosquitto test server website](http://test.mosquitto.org/) for information about the broken configuration
 
 
 Configure Mosquitto for use Django Auth
@@ -72,3 +73,15 @@ auth_opt_http_getuser_uri /mqtt/auth
 auth_opt_http_superuser_uri /mqtt/superuser
 auth_opt_http_aclcheck_uri /mqtt/acl
 ```
+
+Setup your own MQTT
+===================
+* With mosquitto:
+wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
+sudo apt-key add mosquitto-repo.gpg.key
+cd /etc/apt/sources.list.d/
+sudo wget http://repo.mosquitto.org/debian/mosquitto-wheezy.list
+sudo wget http://repo.mosquitto.org/debian/mosquitto-jessie.list
+sudo apt-get update
+sudo apt-get install mosquitto
+

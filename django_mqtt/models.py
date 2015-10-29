@@ -8,6 +8,7 @@ import paho.mqtt.client as mqtt
 import ssl
 import socket
 
+mqtt_pre_publish = django.dispatch.Signal(providing_args=["client", "topic", "payload", "qos", "retain"])
 mqtt_publish = django.dispatch.Signal(providing_args=["client", "userdata", "mid"])
 mqtt_disconnect = django.dispatch.Signal(providing_args=["client", "userdata", "rc"])
 
@@ -36,6 +37,30 @@ def get_mqtt_client(client, empty_client_id=False):
         cli.username_pw_set(client.auth.user, client.auth.password)
     return cli
 
+PROTO_MQTT_CONN_OK = 0
+PROTO_MQTT_CONN_ERROR_PROTO_VERSION = 1
+PROTO_MQTT_CONN_ERROR_INVALID_CLIENT = 2
+PROTO_MQTT_CONN_ERROR_UNAVAILABLE = 3
+PROTO_MQTT_CONN_ERROR_BAD_USER = 4
+PROTO_MQTT_CONN_ERROR_NOT_AUTH = 5
+PROTO_MQTT_CONN_ERROR_UNKNOWN = 6
+PROTO_MQTT_CONN_ERROR_GENERIC = 100
+PROTO_MQTT_CONN_ERROR_ADDR_FAILED = 191
+PROTO_MQTT_CONN_ERROR_INTERRUPTED = 200
+PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED = 201
+PROTO_MQTT_CONN_ERROR_FAULT_NETWORK = 202
+PROTO_MQTT_CONN_ERROR_INVALID = 203
+PROTO_MQTT_CONN_ERROR_BLOCK = 204
+PROTO_MQTT_CONN_ERROR_BLOCKING = 205
+PROTO_MQTT_CONN_ERROR_IN_USE = 206
+PROTO_MQTT_CONN_ERROR_RESET = 207
+PROTO_MQTT_CONN_ERROR_SHUTDOWN = 208
+PROTO_MQTT_CONN_ERROR_TIMEOUT = 209
+PROTO_MQTT_CONN_ERROR_REFUSED = 210
+PROTO_MQTT_CONN_ERROR_TOO_LONG = 211
+PROTO_MQTT_CONN_ERROR_DOWN = 212
+PROTO_MQTT_CONN_ERROR_UNREACHABLE = 213
+
 
 def update_mqtt_data(sender, **kwargs):
     is_new = False
@@ -48,6 +73,8 @@ def update_mqtt_data(sender, **kwargs):
         cli = get_mqtt_client(obj.client)
         try:
             cli.connect(obj.client.server.host, obj.client.server.port, obj.client.keepalive)
+            mqtt_pre_publish.send(sender=MQTTData.__class__, client=obj.client,
+                                  topic=obj.topic, payload=obj.payload, qos=obj.qos, retain=obj.retain)
             (rc, mid) = cli.publish(obj.topic, obj.payload, obj.qos, obj.retain)
 
             obj.client.server.status = rc
@@ -64,40 +91,40 @@ def update_mqtt_data(sender, **kwargs):
             if ex.errno == 11004:
                 obj.client.server.status = 191
             else:
-                obj.client.server.status = 100
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
             obj.client.server.save()
         except IOError as ex:
             # See in socket: WSA error codes
             if ex.errno == 10004:
-                obj.client.server.status = 200
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_INTERRUPTED
             elif ex.errno == 10013:
-                obj.client.server.status = 201
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED
             elif ex.errno == 10014:
-                obj.client.server.status = 202
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_FAULT_NETWORK
             elif ex.errno == 10022:
-                obj.client.server.status = 203
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_INVALID
             elif ex.errno == 10035:
-                obj.client.server.status = 204
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCK
             elif ex.errno == 10036:
-                obj.client.server.status = 205
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCKING
             elif ex.errno == 10048:
-                obj.client.server.status = 206
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_IN_USE
             elif ex.errno == 10054:
-                obj.client.server.status = 207
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_RESET
             elif ex.errno == 10058:
-                obj.client.server.status = 208
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_SHUTDOWN
             elif ex.errno == 10060:
-                obj.client.server.status = 209
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_TIMEOUT
             elif ex.errno == 10061:
-                obj.client.server.status = 210
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_REFUSED
             elif ex.errno == 10063:
-                obj.client.server.status = 211
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_TOO_LONG
             elif ex.errno == 10064:
-                obj.client.server.status = 212
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_DOWN
             elif ex.errno == 10065:
-                obj.client.server.status = 213
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_UNREACHABLE
             else:
-                obj.client.server.status = 100
+                obj.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
             obj.client.server.save()
 
 
@@ -121,36 +148,42 @@ PROTO_MQTT_QoS = (
     (1, 'QoS 1: Always delivered at least once'),
     (2, 'QoS 2: Always delivered exactly once'),
 )
-PROTO_MQTT_CONN_ERROR = (
-    (0, 'Connection successful'),
-    (1, 'Connection refused - incorrect protocol version'),
-    (2, 'Connection refused - invalid client identifier'),
-    (3, 'Connection refused - server unavailable'),
-    (4, 'Connection refused - bad username or password'),
-    (5, 'Connection refused - not authorised'),
-    (6, 'Unknow'),
+PROTO_MQTT_ACC_SUS = 1
+PROTO_MQTT_ACC_PUB = 2
+PROTO_MQTT_ACC = (
+    (PROTO_MQTT_ACC_SUS, 'Suscriptor'),
+    (PROTO_MQTT_ACC_PUB, 'Publisher'),
+)
+PROTO_MQTT_CONN_STATUS = (
+    (PROTO_MQTT_CONN_OK, 'Connection successful'),
+    (PROTO_MQTT_CONN_ERROR_PROTO_VERSION, 'Connection refused - incorrect protocol version'),
+    (PROTO_MQTT_CONN_ERROR_INVALID_CLIENT, 'Connection refused - invalid client identifier'),
+    (PROTO_MQTT_CONN_ERROR_UNAVAILABLE, 'Connection refused - server unavailable'),
+    (PROTO_MQTT_CONN_ERROR_BAD_USER, 'Connection refused - bad username or password'),
+    (PROTO_MQTT_CONN_ERROR_NOT_AUTH, 'Connection refused - not authorised'),
+    (PROTO_MQTT_CONN_ERROR_UNKNOWN, 'Unknown'),
 
-    (100, 'Connection error'),
-    (191, 'Connection error - Get address info failed'),
+    (PROTO_MQTT_CONN_ERROR_GENERIC, 'Connection error'),
+    (PROTO_MQTT_CONN_ERROR_ADDR_FAILED, 'Connection error - Get address info failed'),
 
-    (200, 'Connection error - The operation was interrupted'),
-    (201, 'Connection error - Permission denied'),
-    (202, 'Connection error - A fault occurred on the network'),
-    (203, 'Connection error - An invalid operation was attempted'),
-    (204, 'Connection error - The socket operation would block'),
-    (205, 'Connection error - A blocking operation is already in progress'),
-    (206, 'Connection error - The network address is in use'),
-    (207, 'Connection error - The connection has been reset'),
-    (208, 'Connection error - The network has been shut down'),
-    (209, 'Connection error - The operation timed out'),
-    (210, 'Connection error - Connection refused'),
-    (211, 'Connection error - The name is too long'),
-    (212, 'Connection error - The host is down'),
-    (213, 'Connection error - The host is unreachable'),
+    (PROTO_MQTT_CONN_ERROR_INTERRUPTED, 'Connection error - The operation was interrupted'),
+    (PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED, 'Connection error - Permission denied'),
+    (PROTO_MQTT_CONN_ERROR_FAULT_NETWORK, 'Connection error - A fault occurred on the network'),
+    (PROTO_MQTT_CONN_ERROR_INVALID, 'Connection error - An invalid operation was attempted'),
+    (PROTO_MQTT_CONN_ERROR_BLOCK, 'Connection error - The socket operation would block'),
+    (PROTO_MQTT_CONN_ERROR_BLOCKING, 'Connection error - A blocking operation is already in progress'),
+    (PROTO_MQTT_CONN_ERROR_IN_USE, 'Connection error - The network address is in use'),
+    (PROTO_MQTT_CONN_ERROR_RESET, 'Connection error - The connection has been reset'),
+    (PROTO_MQTT_CONN_ERROR_SHUTDOWN, 'Connection error - The network has been shut down'),
+    (PROTO_MQTT_CONN_ERROR_TIMEOUT, 'Connection error - The operation timed out'),
+    (PROTO_MQTT_CONN_ERROR_REFUSED, 'Connection error - Connection refused'),
+    (PROTO_MQTT_CONN_ERROR_TOO_LONG, 'Connection error - The name is too long'),
+    (PROTO_MQTT_CONN_ERROR_DOWN, 'Connection error - The host is down'),
+    (PROTO_MQTT_CONN_ERROR_UNREACHABLE, 'Connection error - The host is unreachable'),
 )
 
 
-private_fs = FileSystemStorage(location=settings.PRIVATE_ROOT)
+private_fs = FileSystemStorage(location=settings.MQTT_CERTS_ROOT)
 
 
 class MQTTSecureConf(models.Model):
@@ -197,11 +230,14 @@ class MQTTServer(models.Model):
         If the broker reports that the client connected with an invalid protocol version,
         the client will automatically attempt to reconnect using v3.1 instead. Default mqttt.MQTTv311
     """
-    host = models.CharField(max_length=1024, blank=True, null=True)
+    host = models.CharField(max_length=1024)
     port = models.IntegerField(default=1883)
     secure = models.ForeignKey(MQTTSecureConf, null=True, blank=True)
     protocol = models.IntegerField(choices=PROTO_MQTT_VERSION, default=mqtt.MQTTv311)
-    status = models.IntegerField(choices=PROTO_MQTT_CONN_ERROR, default=6)
+    status = models.IntegerField(choices=PROTO_MQTT_CONN_STATUS, default=PROTO_MQTT_CONN_ERROR_UNKNOWN)
+
+    class Meta:
+        unique_together = ['host', 'port']
 
     def __str__(self):
         return "mqtt://%s:%s" % (self.host, self.port)
@@ -286,3 +322,10 @@ class MQTTData(models.Model):
         return "%s - %s - %s" % (self.payload, self.topic, self.client)
 
 post_save.connect(receiver=update_mqtt_data, sender=MQTTData, dispatch_uid='django_mqtt_update_signal')
+
+
+class MQTT_ACL(models.Model):
+    allow = models.BooleanField(default=True)
+    topic = models.CharField(max_length=1024)
+    acc = models.IntegerField(choices=PROTO_MQTT_ACC)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, blank=True, null=True)
