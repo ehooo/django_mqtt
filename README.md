@@ -88,17 +88,7 @@ urlpatterns = patterns(
 )
 ```
 
-For active Mosquito Auth Plugin edit ```mosquitto.conf``` and add:
-```
-auth_plugin /path/to/auth-plug.so
-
-auth_opt_backends http
-auth_opt_http_ip 127.0.0.1
-auth_opt_http_port 8000
-auth_opt_http_getuser_uri /mqtt/auth
-auth_opt_http_superuser_uri /mqtt/superuser
-auth_opt_http_aclcheck_uri /mqtt/acl
-```
+Run script [install_mosquitto_auth_plugin.sh](script/install_mosquitto_auth_plugin.sh)
 
 
 MQTT Test Brokens
