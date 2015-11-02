@@ -88,7 +88,9 @@ urlpatterns = patterns(
 )
 ```
 
-Run script [install_mosquitto_auth_plugin.sh](script/install_mosquitto_auth_plugin.sh)
+Run script [install_mosquitto_auth_plugin.sh](script/install_mosquitto_auth_plugin.sh) for install mosquitto server and
+configure it for use [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug) with compiler configuration in
+[config.mk](script/config.mk) and configure mosquitto server with [auth_plug.conf](script/auth_plug.conf).
 
 
 MQTT Test Brokens
@@ -97,14 +99,10 @@ You can use the [mosquitto test server](http://test.mosquitto.org/) ```test.mosq
 See the [mosquitto test server website](http://test.mosquitto.org/) for information about the broken configuration
 
 
-Setup your own MQTT
-===================
-* With mosquitto:
-wget http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key
-sudo apt-key add mosquitto-repo.gpg.key
-cd /etc/apt/sources.list.d/
-sudo wget http://repo.mosquitto.org/debian/mosquitto-wheezy.list
-sudo wget http://repo.mosquitto.org/debian/mosquitto-jessie.list
-sudo apt-get update
-sudo apt-get install mosquitto
+Setup your own MQTT for test
+============================
+Run script [INSTALL.sh](test_web/INSTALL.sh) ```bash test_web/INSTALL.sh```.
 
+This script will be install and configure [mosquitto](http://www.mosquitto.org/),
+[mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug), [gunicorn](http://www.gunicorn.org/),
+ [supervisord](http://www.supervisord.org/), [nginx](http://www.nginx.org/) and [postgresql](http://www.postgresql.org/)
