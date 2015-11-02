@@ -1,3 +1,2 @@
-virtualenv
 django
 paho-mqtt
