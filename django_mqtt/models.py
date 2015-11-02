@@ -40,10 +40,16 @@ CERT_REQS = (
 )
 PROTO_SSL_VERSION = (
     (ssl.PROTOCOL_TLSv1, 'v1'),
-    (ssl.PROTOCOL_SSLv2, 'v2'),
     (ssl.PROTOCOL_SSLv23, 'v2.3'),
-    (ssl.PROTOCOL_SSLv3, 'v3'),
 )
+try:
+    PROTO_SSL_VERSION.append((ssl.PROTOCOL_SSLv2, 'v2'))
+except AttributeError:
+    pass  # This protocol is not available if OpenSSL is compiled with the OPENSSL_NO_SSL2 flag.
+try:
+    PROTO_SSL_VERSION.append((ssl.PROTOCOL_SSLv3, 'v3'))
+except AttributeError:
+    pass  # This protocol is not be available if OpenSSL is compiled with the OPENSSL_NO_SSLv3 flag.
 PROTO_MQTT_VERSION = (
     (mqtt.MQTTv31, 'v3.1'),
     (mqtt.MQTTv311, 'v3.1.1'),
