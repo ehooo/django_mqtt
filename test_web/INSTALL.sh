@@ -64,10 +64,11 @@ sudo ln -s /etc/nginx/sites-available/django_mqtt /etc/nginx/sites-enabled/djang
 sudo rm /etc/nginx/sites-enabled/default
 rm nginx.conf
 
-sudo service supervisor restart
+sudo systemctl restart supervisor.service
 sudo service nginx restart
 
 echo "Configure Database"
 sudo su postgres sh -c "createuser django_mqtt -P -d"
+sudo su postgres sh -c "createdb django_mqtt"
 # sudo runuser -u postgres psql
 env/bin/python manage.py syncdb
