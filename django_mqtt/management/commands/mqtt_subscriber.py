@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from django.utils.translation import ugettext_lazy as _
 from django.core.management.base import BaseCommand, CommandError
 
-from django_mqtt.models import MQTTClient, get_mqtt_client
+from django_mqtt.models import MQTTClient
 
 from optparse import make_option
 
@@ -72,7 +72,7 @@ class Command(BaseCommand):
                     print obj.pk, '->', obj
                 id = input("Select id from DB: ")
         obj = MQTTClient.objects.get(pk=id)
-        cli = get_mqtt_client(obj, True)
+        cli = obj.get_mqtt_client()
 
         cli.on_connect = on_connect
         cli.on_disconnect = on_disconnect

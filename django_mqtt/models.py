@@ -88,7 +88,10 @@ PROTO_MQTT_CONN_STATUS = (
 )
 
 
-private_fs = FileSystemStorage(location=settings.MQTT_CERTS_ROOT)
+private_location = settings.BASE_DIR
+if hasattr(settings, 'MQTT_CERTS_ROOT'):
+    private_location = settings.MQTT_CERTS_ROOT
+private_fs = FileSystemStorage(location=private_location)
 
 
 class MQTTSecureConf(models.Model):
@@ -195,7 +198,7 @@ class MQTTClient(models.Model):
 
     def get_mqtt_client(self, empty_client_id=False):
         client_id = self.client_id
-        if empty_client_id:
+        if not self.clean_session and empty_client_id:
             client_id = None
         cli = mqtt.Client(client_id, self.clean_session, protocol=self.server.protocol)
         if self.server.secure:

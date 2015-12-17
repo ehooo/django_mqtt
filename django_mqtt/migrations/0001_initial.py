@@ -2,8 +2,12 @@
 from __future__ import unicode_literals
 
 from django.db import models, migrations
+from django.conf import settings
 import django.core.files.storage
 
+private_location = settings.BASE_DIR
+if hasattr(settings, 'MQTT_CERTS_ROOT'):
+    private_location = settings.MQTT_CERTS_ROOT
 
 class Migration(migrations.Migration):
 
@@ -56,9 +60,9 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
                 ('ca_certs', models.CharField(max_length=1024)),
                 ('cert_reqs', models.IntegerField(default=2, choices=[(2, b'Required'), (1, b'Optional'), (0, b'None')])),
-                ('tls_version', models.IntegerField(default=3, choices=[(3, b'v1'), (0, b'v2'), (2, b'v2.3'), (1, b'v3')])),
-                ('certfile', models.FileField(storage=django.core.files.storage.FileSystemStorage(location=b'C:\\Users\\ehooo\\Documents\\GitHub\\django_mqtt\\private'), null=True, upload_to=b'certs', blank=True)),
-                ('keyfile', models.FileField(storage=django.core.files.storage.FileSystemStorage(location=b'C:\\Users\\ehooo\\Documents\\GitHub\\django_mqtt\\private'), null=True, upload_to=b'keys', blank=True)),
+                ('tls_version', models.IntegerField(default=3, choices=[(3, b'v1'), (2, b'v2.3')])),
+                ('certfile', models.FileField(storage=django.core.files.storage.FileSystemStorage(location=private_location), null=True, upload_to=b'certs', blank=True)),
+                ('keyfile', models.FileField(storage=django.core.files.storage.FileSystemStorage(location=private_location), null=True, upload_to=b'keys', blank=True)),
                 ('ciphers', models.CharField(default=None, max_length=1024, null=True, blank=True)),
             ],
             options={

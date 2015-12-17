@@ -44,6 +44,16 @@ def update_mqtt_data(sender, **kwargs):
 post_save.connect(receiver=update_mqtt_data, sender=MQTTData, dispatch_uid='django_mqtt_update_signal')
 ```
 
+Or you can auto-send with any change using:
+```
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django_mqtt.models import MQTTData
+
+@receiver(post_save, sender=MQTTData)
+def auto_update(sender, instance, **kwargs):
+    instance.update_remote()
+```
 
 Attach signals
 ==============
