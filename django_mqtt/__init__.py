@@ -1,4 +1,4 @@
-__version__ = (0, 0, 1)
+__version__ = (0, 0, 2)
 __author__ = "Victor Torre"
 __contact__ = "web.ehooo@gmail.com"
 __homepage__ = "https://github.com/ehooo/django_mqtt"
