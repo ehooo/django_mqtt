@@ -1,6 +1,6 @@
 from ez_setup import use_setuptools
 use_setuptools()
-from setuptools import setup, find_packages
+from setuptools import setup
 
 import django_mqtt as meta
 
@@ -19,4 +19,4 @@ setup(name='django-mqtt',
           "Operating System :: OS Independent",
           "Programming Language :: Python :: 2.7",
       ],
-      packages=find_packages())
+      packages=['django_mqtt'])

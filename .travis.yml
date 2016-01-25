@@ -1,0 +1,3 @@
+install:
+  - ./test_web/INSTALL.sh
+  - python setup.py
