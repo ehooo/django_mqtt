@@ -5,8 +5,6 @@ from django.core.management.base import BaseCommand, CommandError
 
 from django_mqtt.models import MQTTClient
 
-from optparse import make_option
-
 
 def on_connect(client, userdata, flags, rc):
     print "Hi", client._client_id, userdata, flags, rc
@@ -44,19 +42,27 @@ def on_log(client, userdata, level, buf):
 
 class Command(BaseCommand):
     help = _('Connect with client as subscriber, for test proposed')
-    args = 'topic'
-    option_list = BaseCommand.option_list + (
-        make_option('--id', action='store', type='int',
-                    default=None, dest='id', help=unicode(_('id from DB object'))),
-        make_option('--qos', action='store', type='int',
-                    default=0, dest='qos', help=unicode(_('Quality of Service'))),
-        make_option('--client_id', action='store', type='string',
-                    default=None, dest='client_id',
-                    help=unicode(_('client_id for broken'))),
-    )
+
+    def add_arguments(self, parser):
+        parser.add_argument('topic', action='store',
+                            type=str, default=None,
+                            help=unicode(_('Sibcribe topic'))
+                            )
+        parser.add_argument('--id', nargs=1, action='store',
+                            type=int, default=None, dest='id',
+                            help=unicode(_('id from DB object'))
+                            )
+        parser.add_argument('--qos', nargs=1, action='store',
+                            type=int, default=0, dest='qos',
+                            help=unicode(_('Quality of Service'))
+                            )
+        parser.add_argument('--client_id', nargs=1, action='store',
+                            type=str, default=None, dest='client_id',
+                            help=unicode(_('client_id for broken'))
+                            )
 
     def handle(self, *args, **options):
-        if len(args) != 1:
+        if not options['topic']:
             raise CommandError(unicode(_('Topic requiered and must be only one')))
         filter = {}
         id = options['id']
@@ -82,7 +88,7 @@ class Command(BaseCommand):
         cli.on_message = on_message
         cli.on_log = on_log
         cli.connect(obj.server.host, obj.server.port, obj.keepalive)
-        cli.subscribe(args[0], options['qos'])
+        cli.subscribe(options['topic'], options['qos'])
         cli.loop_forever()
         cli.disconnect()
 

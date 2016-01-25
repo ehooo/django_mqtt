@@ -1,2 +1,3 @@
-django
-paho-mqtt
+django==1.9.1
+paho-mqtt==1.1
+six==1.8.0

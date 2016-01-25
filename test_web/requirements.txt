@@ -1,3 +1,4 @@
-virtualenv
-gunicorn
-psycopg2
+django-extensions==1.6.1
+virtualenv==14.0.1
+gunicorn==19.4.5
+psycopg2==2.6.1

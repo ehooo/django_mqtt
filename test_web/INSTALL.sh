@@ -20,6 +20,7 @@ env/bin/pip install -r test_web/requirements.txt
 env/bin/pip install -r requirements.txt
 
 echo "
+RUN_DB_SERVER=True
 DJANGO_SETTINGS_MODULE=test_web.settings
 DJANGO_WSGI_MODULE=test_web.wsgi
 " >> env/bin/activate
@@ -32,7 +33,7 @@ directory = $PWD/
 user = www-data
 autostart = true
 autorestart = true
-# environment = DJANGO_SETTINGS_MODULE=\"test_web.settings\",DJANGO_WSGI_MODULE=\"test_web.wsgi\"
+environment = DJANGO_SETTINGS_MODULE=\"test_web.settings\",DJANGO_WSGI_MODULE=\"test_web.wsgi\",RUN_DB_SERVER=\"True\"
 " > supervisor.conf
 sudo cp supervisor.conf /etc/supervisor/conf.d/django_mqtt.conf
 rm supervisor.conf
