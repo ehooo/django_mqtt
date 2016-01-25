@@ -1,3 +1,4 @@
 install:
   - ./test_web/INSTALL.sh
-  - python setup.py
+  - env/bin/python setup.py
+  - env/bin/python manage.py syncdb
