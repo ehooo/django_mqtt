@@ -2,19 +2,11 @@ language: python
 
 python:
   - "2.7"
+  - "3.3"
 
 branches:
   only:
     - master
-
-matrix:
-  include:
-    - python: "2.7"
-      env: TEST_SUITE=suite_2_7
-    - python: "3.3"
-      env: TEST_SUITE=suite_3_3
-    - python: "pypy"
-      env: TEST_SUITE=suite_pypy
 
 before_install:
   - pip install pip --upgrade
@@ -24,4 +16,5 @@ before_install:
 install:
   - python setup.py install
 
-script: ./scripts/run-tests.sh
+script:
+  - python manager.py test
