@@ -1,4 +1,4 @@
-Django-MQTT
+Django-MQTT [![Build Status](https://travis-ci.org/ehooo/django_mqtt.svg?branch=master)](https://travis-ci.org/ehooo/django_mqtt)
 ===========
 It is a django module that allow send your information stored in your database to MQTT server as MQTT Publisher.
 
@@ -99,8 +99,10 @@ urlpatterns = patterns(
 ```
 
 Run script [install_mosquitto_auth_plugin.sh](script/install_mosquitto_auth_plugin.sh) for install mosquitto server and
+run script [compile_mosquitto_auth_plugin.sh](script/compile_mosquitto_auth_plugin.sh)
+and [configure_mosquitto_auth_plugin.sh](script/configure_mosquitto_auth_plugin.sh) for
 configure it for use [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug) with compiler configuration in
-[config.mk](script/config.mk) and configure mosquitto server with [auth_plug.conf](script/auth_plug.conf).
+[config.mk](script/config.mk) and mosquitto configuration server with [auth_plug.conf](script/auth_plug.conf).
 
 
 MQTT Test Brokens
@@ -111,7 +113,8 @@ See the [mosquitto test server website](http://test.mosquitto.org/) for informat
 
 Setup your own MQTT for test
 ============================
-Run script [INSTALL.sh](test_web/INSTALL.sh) ```bash test_web/INSTALL.sh```.
+Run scripts [INSTALL.sh](test_web/INSTALL.sh) ```bash test_web/INSTALL.sh```
+and [CONFIGURE.sh](test_web/CONFIGURE.sh) ```bash test_web/CONFIGURE.sh```.
 
 This script will be install and configure [mosquitto](http://www.mosquitto.org/),
 [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug), [gunicorn](http://www.gunicorn.org/),

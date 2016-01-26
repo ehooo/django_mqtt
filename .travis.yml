@@ -1,4 +1,9 @@
-install:
+before_install:
   - ./test_web/INSTALL.sh
-  - env/bin/python setup.py
-  - env/bin/python manage.py syncdb
+  - pip install pip --upgrade
+  - pip install -r requirements.txt
+  - pip install -r test_web/requirements.txt
+
+install:
+  - python setup.py
+

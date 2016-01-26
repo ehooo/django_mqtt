@@ -1,7 +1,23 @@
 #!/usr/bin/env bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+echo "Compiling and configure Mosquitto auth-plugin"
+bash script/compile_mosquitto_auth_plugin.sh
+bash script/configure_mosquitto_auth_plugin.sh
+
 echo "Configure VirtualEnv"
+
+echo "Install dependencies"
+virtualenv env
+env/bin/pip install pip --upgrade
+env/bin/pip install -r test_web/requirements.txt
+env/bin/pip install -r requirements.txt
+
+echo "Making directories"
+mkdir private
+chown www-data private
+env/bin/python manage.py collectstatic
+
 echo "
 RUN_DB_SERVER=True
 DJANGO_SETTINGS_MODULE=test_web.settings
@@ -50,4 +66,3 @@ echo "Configure Database"
 sudo su postgres sh -c "createuser django_mqtt -P -d"
 sudo su postgres sh -c "createdb django_mqtt"
 # sudo runuser -u postgres psql
-env/bin/python manage.py syncdb
