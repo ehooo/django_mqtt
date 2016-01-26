@@ -16,7 +16,13 @@ class MQTTAuth(View):
         return super(MQTTAuth, self).dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
-        user = authenticate(username=request.DATA.get('username'), password=request.DATA.get('password'))
+        data = {}
+        if hasattr(request, 'POST'):
+            data = request.POST
+        elif hasattr(request, 'DATA'):
+            data = request.DATA
+
+        user = authenticate(username=data.get('username'), password=data.get('password'))
         if not user or not user.is_active:
             return HttpResponseForbidden('')
         return HttpResponse('')
@@ -30,8 +36,13 @@ class MQTTSuperuser(View):
         return super(MQTTSuperuser, self).dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        data = {}
+        if hasattr(request, 'POST'):
+            data = request.POST
+        elif hasattr(request, 'DATA'):
+            data = request.DATA
         try:
-            user = User.objects.get(username=request.DATA.get('username'))
+            user = User.objects.get(username=data.get('username'))
             if user.is_superuser:
                 return HttpResponse('')
         except User.DoesNotExist:
@@ -47,17 +58,20 @@ class MQTTAcl(View):
         return super(MQTTAcl, self).dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        data = {}
+        if hasattr(request, 'POST'):
+            data = request.POST
+        elif hasattr(request, 'DATA'):
+            data = request.DATA
         allow = False
         if hasattr(settings, 'MQTT_ACL_ALLOW'):
             allow = settings.MQTT_ACL_ALLOW
         try:
-            topic = request.DATA.get('topic', None)
-            acc = request.DATA.get('acc', None)
-            acl = MQTT_ACL.objects.filter(acc=acc, topic=topic)
+            acl = MQTT_ACL.objects.filter(acc=data.get('acc', None), topic=data.get('topic', None))
             def_acl = acl.filter(user__isnull=True).first()
             if def_acl:
                 allow = def_acl.allow
-            user = User.objects.get(username=request.DATA.get('username'))
+            user = User.objects.get(username=data.get('username'))
             user_allow = acl.filter(user=user).first()
             if user_allow:
                 allow = user_allow.allow
