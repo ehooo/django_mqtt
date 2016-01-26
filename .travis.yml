@@ -17,4 +17,4 @@ install:
   - python setup.py install
 
 script:
-  - python manager.py test
+  - python manage.py test
