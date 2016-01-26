@@ -1,5 +1,10 @@
+language: python
+
+python:
+  - "2.7"
+
 before_install:
-  - ./test_web/INSTALL.sh
+  - sudo apt-get install mosquitto libssl-dev libmosquitto-dev libcurl4-openssl-dev -y -qq
   - pip install pip --upgrade
   - pip install -r requirements.txt
   - pip install -r test_web/requirements.txt
