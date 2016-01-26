@@ -2,7 +2,6 @@ language: python
 
 python:
   - "2.7"
-  - "3.3"
 
 branches:
   only:
@@ -10,11 +9,13 @@ branches:
 
 before_install:
   - pip install pip --upgrade
-  - pip install -r requirements.txt
-  - pip install -r test_web/requirements.txt
 
 install:
   - python setup.py install
+
+before_script:
+  - pip install -r requirements.txt
+  - pip install -r test_web/requirements.txt
 
 script:
   - python manage.py test
