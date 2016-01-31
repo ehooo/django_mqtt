@@ -84,9 +84,21 @@ MQTT_SUBACK_QoS2 = MQTT_QoS2
 MQTT_SUBACK_FAILURE = 0x80
 
 
-def remaining2list(remain):
+def remaining2list(remain, exception=False):
     bytes_remain = []
+    if not exception:
+        if remain is None:
+            return bytes_remain
+        elif remain < 0:
+            return bytes_remain
+    else:
+        if remain is None:
+            raise TypeError('None not allowed')
+        elif remain < 0:
+            raise ValueError('remain must positive')
     dec = int(remain)
+    if dec == 0:
+        bytes_remain.append(0)
     while dec > 0:
         _enc = int(dec % 128)
         dec = int(dec / 128)
@@ -96,44 +108,71 @@ def remaining2list(remain):
     return bytes_remain
 
 
-def int2remaining(remain):
+def int2remaining(remain, exception=False):
+    if exception:
+        if remain is None:
+            raise TypeError('None not allowed')
+        elif remain < 0:
+            raise ValueError('remain must positive')
     bytes_remain = remaining2list(remain)
     fmt = "!"+("B"*len(bytes_remain))
     return struct.pack(fmt, *bytes_remain)
 
 
 def get_remaining(buff, exception=False):
+    if not buff:
+        if exception:
+            raise TypeError('required Buff')
+        return None
     byte_size = struct.calcsize("!B")
     multiplier = 1
     end = 0
     remain = 0
     try:
         read, = struct.unpack_from("!B", buff, end * byte_size)
+        if read <= 0x7f:
+            if 1 != len(buff):
+                if exception:
+                    raise struct.error('Buffer bigger than remain')
+                return -1
+            return read & 127
         while read > 0x7f:
             remain += (read & 127) * multiplier
             multiplier *= 128
             end += 1
             read, = struct.unpack_from("!B", buff, end * byte_size)
+        end += 1
         remain += (read & 127) * multiplier
     except struct.error as ex:
         if exception:
             raise ex
+        return -1
+    if end != len(buff):
+        if exception:
+            raise struct.error
+        return -1
     return remain
 
 
-def get_string(buff):
-    str_size, = struct.unpack_from("!H", buff)
+def get_string(buff, exception=False):
+    if not buff:
+        if exception:
+            raise TypeError('required Buff')
+        return None
+    str_size, = struct.unpack_from("!H", buff[:2])
     fmt = "!"+("B"*str_size)
-    str_bytes = struct.unpack_from(fmt, buff, struct.calcsize("!H"))
-    uni_str = six.StringIO()
-    for char in str_bytes:
-        uni_str.write(unichr(char))
-    return uni_str.getvalue()
+    utf8_str = struct.unpack_from(fmt, buff, struct.calcsize("!H"))
+    byte_str = map(chr, utf8_str)
+    return ''.join(byte_str).decode('utf8')
 
 
-def gen_string(uni_str):
-    str_size = len(uni_str)
+def gen_string(uni_str, exception=False):
+    if not hasattr(uni_str, 'encode'):
+        if exception:
+            raise TypeError('uni_str required function encode(format)')
+        return None
+    utf8_str = uni_str.encode('utf8')
+    str_size = len(utf8_str)
     fmt = "!H"+("B"*str_size)
-    byte_str = map(lambda x: ord(x), uni_str)
+    byte_str = map(ord, utf8_str)
     return struct.pack(fmt, str_size, *byte_str)
-
