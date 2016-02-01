@@ -119,14 +119,14 @@ def int2remaining(remain, exception=False):
     return struct.pack(fmt, *bytes_remain)
 
 
-def get_remaining(buff, exception=False):
+def get_remaining(buff, start_at=0, exception=False):
     if not buff:
         if exception:
             raise TypeError('required Buff')
         return None
     byte_size = struct.calcsize("!B")
     multiplier = 1
-    end = 0
+    end = start_at
     remain = 0
     try:
         read, = struct.unpack_from("!B", buff, end * byte_size)
@@ -155,7 +155,7 @@ def get_remaining(buff, exception=False):
 
 
 def get_string(buff, exception=False):
-    if not buff:
+    if not buff or len(buff) < 2:
         if exception:
             raise TypeError('required Buff')
         return None

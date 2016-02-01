@@ -50,12 +50,27 @@ class BaseMQTT():
     def set_flags(self, *args, **kwargs):
         raise NotImplemented
 
+    def variable_header(self):
+        if self.ctl in [MQTT_CTRL_PUBACK, MQTT_CTRL_PUBREC, MQTT_CTRL_PUBREL, MQTT_CTRL_PUBCOMP,
+                        MQTT_CTRL_SUBSCRIBE, MQTT_CTRL_SUBACK, MQTT_CTRL_UNSUBSCRIBE, MQTT_CTRL_UNSUBACK]:
+            return struct.pack("!H", self.pack_identifier)
+        raise NotImplemented
+
     def payload(self):
         if self.ctl in [MQTT_CTRL_CONNACK, MQTT_CTRL_PUBACK, MQTT_CTRL_PUBREC,
                         MQTT_CTRL_PUBREL, MQTT_CTRL_PUBCOMP, MQTT_CTRL_UNSUBACK,
                         MQTT_CTRL_PINGREQ, MQTT_CTRL_PINGRESP, MQTT_CTRL_DISCONNECT]:
             return ""
         raise NotImplemented
+
+    def __unicode__(self):
+        msg = self.variable_header()
+        msg += self.payload()
+
+        ret = struct.pack("!B", self.header)
+        ret += self.get_remaining(msg)
+        ret += msg
+        return ret
 
 
 class MQTTEmpty(BaseMQTT):
@@ -77,25 +92,16 @@ class MQTTEmpty(BaseMQTT):
     def payload(self):
         return ""
 
-    def __unicode__(self):
-        ret = struct.pack("!B", self.header)
-        ret += self.get_remaining(0)
-        return ret
-
 
 class MQTTOnlyPackID(MQTTEmpty):
 
-    def __unicode__(self):
-        msg = struct.pack("!H", self.pack_identifier)
-
-        ret = struct.pack("!B", self.header)
-        ret += self.get_remaining(msg)
-        ret += msg
-        return ret
+    def variable_header(self):
+        return struct.pack("!H", self.pack_identifier)
 
 
 class MQTTConnect(BaseMQTT):
-    def __init__(self, clientId, keep_alive=0x00, proto_level=0x04):
+    def __init__(self, clientId, keep_alive=0x0f, proto_level=0x04,
+                 topic="", msg="", auth_name=None, auth_password=None):
         super(BaseMQTT, self).__init__(MQTT_CTRL_CONNECT)
         self._QoS = MQTT_QoS0
         self.proto_name = gen_string("MQTT")
@@ -103,31 +109,63 @@ class MQTTConnect(BaseMQTT):
         self.conn_flags = 0x00
         self.keep_alive = keep_alive
         self.clientId = clientId
-        self.topic = ""
-        self.msg = ""
-        self.auth_name = ""
-        self.auth_password = ""
+        self._topic = topic
+        self._msg = msg
+        flags = {}
+        if self._msg or self._topic:
+            flags['retain'] = True
+        flags['name'] = auth_name
+        flags['password'] = auth_password
+        self.set_flags(**flags)
 
-    def set_flags(self, name=False, password=False, retain=False, qos=None, flag=False, clean=False):
+    @property
+    def msg(self):
+        return self._msg
+    @msg.setter
+    def set_msg(self, msg):
+        if msg is None:
+            msg = ""
+        if msg or self._topic:
+            self.set_flags(retain=True)
+        else:
+            self.set_flags(retain=False)
+        self._msg = msg
+
+    @property
+    def topic(self):
+        return self._topic
+    @msg.setter
+    def set_topic(self, topic):
+        if topic is None:
+            topic = ""
+        if topic or self._msg:
+            self.set_flags(retain=True)
+        else:
+            self.set_flags(retain=False)
+        self._topic = topic
+
+    def set_flags(self, name=None, password=None, retain=None, qos=None, flag=None, clean=None):
         if name:
             self.conn_flags |= MQTT_CONN_FLAGS_NAME
-        elif name is None:
+            self.auth_name = unicode(name)
+        elif name is not None:
             self.conn_flags ^= MQTT_CONN_FLAGS_NAME
         if password:
             self.conn_flags |= MQTT_CONN_FLAGS_PASSWORD
-        elif password is None:
+            self.auth_password = unicode(password)
+        elif password is not None:
             self.conn_flags ^= MQTT_CONN_FLAGS_PASSWORD
         if retain:
             self.conn_flags |= MQTT_CONN_FLAGS_RETAIN
-        elif retain is None:
+        elif retain is not None:
             self.conn_flags ^= MQTT_CONN_FLAGS_RETAIN
         if flag:
             self.conn_flags |= MQTT_CONN_FLAGS_FLAG
-        elif flag is None:
+        elif flag is not None:
             self.conn_flags ^= MQTT_CONN_FLAGS_FLAG
         if clean:
             self.conn_flags |= MQTT_CONN_FLAGS_CLEAN
-        elif clean is None:
+        elif clean is not None:
             self.conn_flags ^= MQTT_CONN_FLAGS_CLEAN
         if qos:
             self.conn_flags = (self.conn_flags & ~(int('11', 2) << 3))
@@ -138,28 +176,23 @@ class MQTTConnect(BaseMQTT):
     def payload(self, ignore_flags=False, exception=False):
         payload = gen_string(self.clientId)
         if ignore_flags or not (self.conn_flags & MQTT_CONN_FLAGS_CLEAN):
-            if exception and len(self.clientId) == 0:
+            if exception and self.clientId and len(self.clientId) == 0:
                 raise ValueError("ClientIds must be between 1 and 23")
         if ignore_flags or self.conn_flags & MQTT_CONN_FLAGS_RETAIN:
-            payload += gen_string(self.topic)
-            payload += gen_string(self.msg)
+            payload += gen_string(self._topic)
+            payload += gen_string(self._msg)
         if ignore_flags or self.conn_flags & MQTT_CONN_FLAGS_NAME:
             payload += gen_string(self.auth_name)
         if ignore_flags or self.conn_flags & MQTT_CONN_FLAGS_PASSWORD:
             payload += gen_string(self.auth_password)
         return payload
 
-    def __unicode__(self):
+    def variable_header(self):
         msg = self.proto_name
         msg += struct.pack("!B", self.proto_level)
         msg += struct.pack("!B", self.conn_flags)
         msg += struct.pack("!H", self.keep_alive)
-        msg += self.payload()
-
-        ret = struct.pack("!B", self.header)
-        ret += self.get_remaining(msg)
-        ret += msg
-        return ret
+        return msg
 
 
 class MQTTConnAck(BaseMQTT):
@@ -175,33 +208,27 @@ class MQTTConnAck(BaseMQTT):
         else:
             self.conn_flags ^= MQTT_CONN_FLAGS_SESSION_PRESENT
 
-    def __unicode__(self):
+    def variable_header(self):
         msg = struct.pack("!B", self.conn_flags)
         msg += struct.pack("!B", self.ret_code)
-
-        ret = struct.pack("!B", self.header)
-        ret += self.get_remaining(msg)
-        ret += msg
-        return ret
+        return msg
 
 
 class MQTTPublish(BaseMQTT):
-    def __init__(self, qos=None, dup=False, retain=False):
+    def __init__(self, topic="", msg="", qos=MQTT_QoS0, dup=False, retain=False):
         super(BaseMQTT, self).__init__(MQTT_CTRL_PUBLISH)
-        if qos is None:
-            qos = MQTT_QoS0
         self.set_flags(qos, dup, retain)
-        self.topic = ""
-        self.msg = ""
+        self.topic = topic
+        self.msg = msg
 
-    def set_flags(self, qos=None, dup=False, retain=False):
+    def set_flags(self, qos=None, dup=None, retain=None):
         if dup:
             self.flags |= MQTTFlagsDUP
-        elif dup is None:
+        elif dup is not None:
             self.flags ^= MQTTFlagsDUP
         if retain:
             self.flags |= MQTTFlagsRETAIN
-        elif retain is None:
+        elif retain is not None:
             self.flags ^= MQTTFlagsRETAIN
         if qos:
             self.flags = (self.flags & ~(int('11', 2) << 1))
@@ -211,16 +238,11 @@ class MQTTPublish(BaseMQTT):
     def payload(self, ignore_flags=False, exception=False):
         return gen_string(self.msg)
 
-    def __unicode__(self):
+    def variable_header(self):
         msg = gen_string(self.topic)
         if self._QoS != MQTT_QoS0:
             msg += struct.pack("!H", self.pack_identifier)
-        msg += self.payload()
-
-        ret = struct.pack("!B", self.header)
-        ret += self.get_remaining(msg)
-        ret += msg
-        return ret
+        return msg
 
 
 class MQTTPubAck(MQTTOnlyPackID):
@@ -260,11 +282,7 @@ class MQTTSubcribe(BaseMQTT):
         for topic in self.topic_list:
             msg += gen_string(topic)
             msg += struct.pack("!B", self.topic_list[topic])
-
-        ret = struct.pack("!B", self.header)
-        ret += self.get_remaining(msg)
-        ret += msg
-        return ret
+        return msg
 
 
 class MQTTSubAck(BaseMQTT):
@@ -275,15 +293,11 @@ class MQTTSubAck(BaseMQTT):
     def add_response(self, response_code):
         self.code_list.append(response_code)
 
-    def __unicode__(self):
+    def variable_header(self):
         msg = struct.pack("!H", self.pack_identifier)
         for code in self.code_list:
             msg += struct.pack("!B", code)
-
-        ret = struct.pack("!B", self.header)
-        ret += self.get_remaining(msg)
-        ret += msg
-        return ret
+        return msg
 
 
 class MQTTUnsubcribe(BaseMQTT):
@@ -294,15 +308,11 @@ class MQTTUnsubcribe(BaseMQTT):
     def add_topic(self, topic):
         self.topic_list.append(topic)
 
-    def __unicode__(self):
+    def variable_header(self):
         msg = struct.pack("!H", self.pack_identifier)
         for topic in self.topic_list:
             msg += gen_string(topic)
-
-        ret = struct.pack("!B", self.header)
-        ret += self.get_remaining(msg)
-        ret += msg
-        return ret
+        return msg
 
 
 class MQTTUnsubAck(MQTTOnlyPackID):

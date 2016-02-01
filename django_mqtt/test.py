@@ -74,6 +74,7 @@ class ProtocolTestCase(TestCase):
     def test_wrong_gen_string(self):
         self.assertEqual(gen_string(None), None)
         self.assertEqual(gen_string(object), None)
+        self.assertRaises(UnicodeDecodeError, gen_string, '\xff')
         self.assertRaises(TypeError, gen_string, None, exception=True)
         self.assertRaises(TypeError, gen_string, object, exception=True)
 
@@ -107,7 +108,11 @@ class ProtocolTestCase(TestCase):
 
     def test_wrong_get_string(self):
         self.assertEqual(get_string(None), None)
+        self.assertEqual(get_string('\xff'), None)
         self.assertRaises(TypeError, get_string, object)
+        self.assertRaises(struct.error, get_string, '\xff\xff')
+        self.assertRaises(struct.error, get_string, '\xff\xff\x00')
+        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x04\xC0\xC1\xF5\xFF')
         self.assertRaises(TypeError, get_string, None, exception=True)
         self.assertRaises(TypeError, get_string, object, exception=True)
 
