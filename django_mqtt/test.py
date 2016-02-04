@@ -1,12 +1,7 @@
 
 from django.test import TestCase
 
-from django_mqtt.packets import *
 from django_mqtt.protocol import *
-
-
-class PacketsTestCase(TestCase):
-    pass  # TODO
 
 
 class ProtocolTestCase(TestCase):
@@ -115,5 +110,4 @@ class ProtocolTestCase(TestCase):
         self.assertRaises(UnicodeDecodeError, get_string, '\x00\x04\xC0\xC1\xF5\xFF')
         self.assertRaises(TypeError, get_string, None, exception=True)
         self.assertRaises(TypeError, get_string, object, exception=True)
-
 

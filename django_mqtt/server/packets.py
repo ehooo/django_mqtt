@@ -1,9 +1,14 @@
-from .protocol import *
+from django_mqtt.protocol import *
+import logging
 import struct
 import os
 
 
-class BaseMQTT():
+class MQTTProcolException(Exception):
+    pass
+
+
+class BaseMQTT(object):
     def __init__(self, ctl):
         self.ctl = ctl
         self.flags = 0x00
@@ -99,7 +104,7 @@ class MQTTEmpty(BaseMQTT):
 
     def parse_body(self, body):
         if body or len(body) > 0:
-            raise ValueError('Body must be empty')
+            raise MQTTProcolException('Body must be empty')
 
 
 class MQTTOnlyPackID(MQTTEmpty):
@@ -114,7 +119,7 @@ class MQTTOnlyPackID(MQTTEmpty):
 class MQTTConnect(BaseMQTT):
     def __init__(self, clientId=None, qos=None, keep_alive=0x0f, proto_level=0x04,
                  topic="", msg="", auth_name=None, auth_password=None):
-        super(BaseMQTT, self).__init__(MQTT_CTRL_CONNECT)
+        super(MQTTConnect, self).__init__(MQTT_CTRL_CONNECT)
         self.proto_name = gen_string("MQTT")
         self.proto_level = proto_level
         self.conn_flags = 0x00
@@ -193,7 +198,7 @@ class MQTTConnect(BaseMQTT):
         payload = gen_string(self.clientId)
         if ignore_flags or not (self.conn_flags & MQTT_CONN_FLAGS_CLEAN):
             if exception and self.clientId and len(self.clientId) == 0:
-                raise ValueError("ClientIds must be between 1 and 23")
+                raise MQTTProcolException("ClientIds must be between 1 and 23")
         if ignore_flags or self.conn_flags & MQTT_CONN_FLAGS_RETAIN:
             payload += gen_string(self._topic)
             payload += gen_string(self._msg)
@@ -233,12 +238,12 @@ class MQTTConnect(BaseMQTT):
             (size, ) = struct.unpack_from("!H", body, padding)
             padding += 2 + size
         if len(body) > padding:
-            raise ValueError('Body too big')
+            raise MQTTProcolException('Body too big')
 
 
 class MQTTConnAck(BaseMQTT):
     def __init__(self):
-        super(BaseMQTT, self).__init__(MQTT_CTRL_CONNACK)
+        super(MQTTConnAck, self).__init__(MQTT_CTRL_CONNACK)
         self.conn_flags = 0x00
         self.ret_code = MQTT_CONN_OK
 
@@ -260,7 +265,7 @@ class MQTTConnAck(BaseMQTT):
 
 class MQTTPublish(BaseMQTT):
     def __init__(self, topic="", msg="", qos=None, dup=False, retain=False):
-        super(BaseMQTT, self).__init__(MQTT_CTRL_PUBLISH)
+        super(MQTTPublish, self).__init__(MQTT_CTRL_PUBLISH)
         self.set_flags(qos, dup, retain)
         self.topic = topic
         self.msg = msg
@@ -302,36 +307,36 @@ class MQTTPublish(BaseMQTT):
         (size, ) = struct.unpack_from("!H", body, padding)
         padding += 2 + size
         if len(body) > padding:
-            raise ValueError('Body too big')
+            raise MQTTProcolException('Body too big')
 
 
 class MQTTPubAck(MQTTOnlyPackID):
     def __init__(self):
-        super(MQTTOnlyPackID, self).__init__(MQTT_CTRL_PUBACK)
+        super(MQTTPubAck, self).__init__(MQTT_CTRL_PUBACK)
         self._QoS = MQTT_QoS1
 
 
 class MQTTPubRec(MQTTOnlyPackID):
     def __init__(self):
-        super(MQTTOnlyPackID, self).__init__(MQTT_CTRL_PUBREC)
+        super(MQTTPubRec, self).__init__(MQTT_CTRL_PUBREC)
         self._QoS = MQTT_QoS2
 
 
 class MQTTPubRel(MQTTOnlyPackID):
     def __init__(self):
-        super(MQTTOnlyPackID, self).__init__(MQTT_CTRL_PUBREL)
+        super(MQTTPubRel, self).__init__(MQTT_CTRL_PUBREL)
         self._QoS = MQTT_QoS2
 
 
 class MQTTPubComp(MQTTOnlyPackID):
     def __init__(self):
-        super(MQTTOnlyPackID, self).__init__(MQTT_CTRL_PUBCOMP)
+        super(MQTTPubComp, self).__init__(MQTT_CTRL_PUBCOMP)
         self._QoS = MQTT_QoS2
 
 
 class MQTTSubcribe(BaseMQTT):
     def __init__(self):
-        super(BaseMQTT, self).__init__(MQTT_CTRL_SUBSCRIBE)
+        super(MQTTSubcribe, self).__init__(MQTT_CTRL_SUBSCRIBE)
         self.topic_list = {}
 
     def add_topic(self, topic, qos):
@@ -359,12 +364,12 @@ class MQTTSubcribe(BaseMQTT):
             padding += 1
             self.add_topic(topic, qos)
         if len(body) > padding:
-            raise ValueError('Body too big')
+            raise MQTTProcolException('Body too big')
 
 
 class MQTTSubAck(BaseMQTT):
     def __init__(self):
-        super(BaseMQTT, self).__init__(MQTT_CTRL_SUBACK)
+        super(MQTTSubAck, self).__init__(MQTT_CTRL_SUBACK)
         self.code_list = []
 
     def add_response(self, response_code):
@@ -388,13 +393,12 @@ class MQTTSubAck(BaseMQTT):
             padding += 1
             self.add_response(response_code)
         if len(body) > padding:
-            raise ValueError('Body too big')
-
+            raise MQTTProcolException('Body too big')
 
 
 class MQTTUnsubcribe(BaseMQTT):
     def __init__(self):
-        super(BaseMQTT, self).__init__(MQTT_CTRL_UNSUBSCRIBE)
+        super(MQTTUnsubcribe, self).__init__(MQTT_CTRL_UNSUBSCRIBE)
         self.topic_list = []
 
     def add_topic(self, topic):
@@ -419,27 +423,27 @@ class MQTTUnsubcribe(BaseMQTT):
             padding += 2 + size
             self.add_topic(topic)
         if len(body) > padding:
-            raise ValueError('Body too big')
+            raise MQTTProcolException('Body too big')
 
 
 class MQTTUnsubAck(MQTTOnlyPackID):
     def __init__(self):
-        super(MQTTOnlyPackID, self).__init__(MQTT_CTRL_UNSUBACK)
+        super(MQTTUnsubAck, self).__init__(MQTT_CTRL_UNSUBACK)
 
 
 class MQTTPingReq(MQTTEmpty):
     def __init__(self):
-        super(BaseMQTT, self).__init__(MQTT_CTRL_PINGREQ)
+        super(MQTTPingReq, self).__init__(MQTT_CTRL_PINGREQ)
 
 
 class MQTTPingResp(MQTTEmpty):
     def __init__(self):
-        super(BaseMQTT, self).__init__(MQTT_CTRL_PINGRESP)
+        super(MQTTPingResp, self).__init__(MQTT_CTRL_PINGRESP)
 
 
 class MQTTDisconect(MQTTEmpty):
     def __init__(self):
-        super(BaseMQTT, self).__init__(MQTT_CTRL_DISCONNECT)
+        super(MQTTDisconect, self).__init__(MQTT_CTRL_DISCONNECT)
 
 
 MQTTClassTable = {
@@ -461,23 +465,30 @@ MQTTClassTable = {
 
 
 def parse_raw(connection):
-    header = connection.recv(1)
-    ctrl = header & 0xf0
-    flags = header & 0x0f
+    try:
+        header = connection.recv(1)
+        ctrl = header & 0xf0
+        flags = header & 0x0f
 
-    remain = 0
-    multiplier = 1
-    read = connection.recv(1)
-    while read > 0x7f:
-        remain += (read & 127) * multiplier
-        multiplier *= 128
+        remain = 0
+        multiplier = 1
         read = connection.recv(1)
-    remain += (read & 127) * multiplier
-    body = connection.recv(remain)
+        while read > 0x7f:
+            remain += (read & 127) * multiplier
+            multiplier *= 128
+            read = connection.recv(1)
+        remain += (read & 127) * multiplier
+        body = connection.recv(remain)
 
-    if ctrl not in MQTTClassTable:
-        return
-    cls = MQTTClassTable[ctrl]()
-    cls.flags = flags
-    cls.parse_body(body)
+        if ctrl not in MQTTClassTable:
+            return
+        cls = MQTTClassTable[ctrl]()
+        cls.flags = flags
+        cls.parse_body(body)
+    except struct.error as s_ex:
+        logging.exception(s_ex)
+        raise MQTTProcolException(s_ex)
+    except ValueError as v_ex:
+        logging.exception(v_ex)
+        raise MQTTProcolException(v_ex)
     return cls
