@@ -1,37 +1,23 @@
+import paho.mqtt.client as mqtt
 import struct
-import six
 
-MQTT_CTRL_CONNECT = 1
-MQTT_CTRL_CONNACK = 2
-MQTT_CTRL_PUBLISH = 3
-MQTT_CTRL_PUBACK = 4
-MQTT_CTRL_PUBREC = 5
-MQTT_CTRL_PUBREL = 6
-MQTT_CTRL_PUBCOMP = 7
-MQTT_CTRL_SUBSCRIBE = 8
-MQTT_CTRL_SUBACK = 9
-MQTT_CTRL_UNSUBSCRIBE = 10
-MQTT_CTRL_UNSUBACK = 11
-MQTT_CTRL_PINGREQ = 12
-MQTT_CTRL_PINGRESP = 13
-MQTT_CTRL_DISCONNECT = 14
 
 MQTTTypes = [
     0,
-    MQTT_CTRL_CONNECT,
-    MQTT_CTRL_CONNACK,
-    MQTT_CTRL_PUBLISH,
-    MQTT_CTRL_PUBACK,
-    MQTT_CTRL_PUBREC,
-    MQTT_CTRL_PUBREL,
-    MQTT_CTRL_PUBCOMP,
-    MQTT_CTRL_SUBSCRIBE,
-    MQTT_CTRL_SUBACK,
-    MQTT_CTRL_UNSUBSCRIBE,
-    MQTT_CTRL_UNSUBACK,
-    MQTT_CTRL_PINGREQ,
-    MQTT_CTRL_PINGRESP,
-    MQTT_CTRL_DISCONNECT,
+    mqtt.CONNECT,
+    mqtt.CONNACK,
+    mqtt.PUBLISH,
+    mqtt.PUBACK,
+    mqtt.PUBREC,
+    mqtt.PUBREL,
+    mqtt.PUBCOMP,
+    mqtt.SUBSCRIBE,
+    mqtt.SUBACK,
+    mqtt.UNSUBSCRIBE,
+    mqtt.UNSUBACK,
+    mqtt.PINGREQ,
+    mqtt.PINGRESP,
+    mqtt.DISCONNECT,
     15
 ]
 
@@ -46,20 +32,20 @@ MQTTFlagsQoS = int('0110', 2)
 MQTTFlagsRETAIN = int('0001', 2)
 
 MQTTFlagsTable = {
-    MQTT_CTRL_CONNECT: int('0000', 2),
-    MQTT_CTRL_CONNACK: int('0000', 2),
-    MQTT_CTRL_PUBLISH: None,
-    MQTT_CTRL_PUBACK: int('0000', 2),
-    MQTT_CTRL_PUBREC: int('0000', 2),
-    MQTT_CTRL_PUBREL: int('0010', 2),
-    MQTT_CTRL_PUBCOMP: int('0000', 2),
-    MQTT_CTRL_SUBSCRIBE: int('0010', 2),
-    MQTT_CTRL_SUBACK: int('0000', 2),
-    MQTT_CTRL_UNSUBSCRIBE: int('0010', 2),
-    MQTT_CTRL_UNSUBACK: int('0000', 2),
-    MQTT_CTRL_PINGREQ: int('0000', 2),
-    MQTT_CTRL_PINGRESP: int('0000', 2),
-    MQTT_CTRL_DISCONNECT: int('0000', 2)
+    mqtt.CONNECT: int('0000', 2),
+    mqtt.CONNACK: int('0000', 2),
+    mqtt.PUBLISH: None,
+    mqtt.PUBACK: int('0000', 2),
+    mqtt.PUBREC: int('0000', 2),
+    mqtt.PUBREL: int('0010', 2),
+    mqtt.PUBCOMP: int('0000', 2),
+    mqtt.SUBSCRIBE: int('0010', 2),
+    mqtt.SUBACK: int('0000', 2),
+    mqtt.UNSUBSCRIBE: int('0010', 2),
+    mqtt.UNSUBACK: int('0000', 2),
+    mqtt.PINGREQ: int('0000', 2),
+    mqtt.PINGRESP: int('0000', 2),
+    mqtt.DISCONNECT: int('0000', 2)
 }
 
 MQTT_CONN_FLAGS_NAME = int('10000000', 2)
@@ -70,13 +56,6 @@ MQTT_CONN_FLAGS_FLAG = int('00000100', 2)
 MQTT_CONN_FLAGS_CLEAN = int('00000010', 2)
 
 MQTT_CONN_FLAGS_SESSION_PRESENT = int('00000001', 2)
-
-MQTT_CONN_OK = 0x00
-MQTT_CONN_UNACCEPTABLE_PROTO = 0x01
-MQTT_CONN_ID_REJECT = 0x02
-MQTT_CONN_SERVER_UNAVAILABLE = 0x03
-MQTT_CONN_BAD_AUTH = 0x04
-MQTT_CONN_NOT_AUTH = 0x05
 
 MQTT_SUBACK_QoS0 = MQTT_QoS0
 MQTT_SUBACK_QoS1 = MQTT_QoS1
@@ -155,6 +134,10 @@ def get_remaining(buff, start_at=0, exception=False):
 
 
 def get_string(buff, exception=False):
+    if buff is None:
+        if exception:
+            raise TypeError('None not allowed')
+        return ''
     if not buff or len(buff) < 2:
         if exception:
             raise TypeError('required Buff')
@@ -167,6 +150,10 @@ def get_string(buff, exception=False):
 
 
 def gen_string(uni_str, exception=False):
+    if uni_str is None:
+        if exception:
+            raise TypeError('None not allowed')
+        return ''
     if not hasattr(uni_str, 'encode'):
         if exception:
             raise TypeError('uni_str required function encode(format)')

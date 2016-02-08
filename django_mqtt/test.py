@@ -67,7 +67,7 @@ class ProtocolTestCase(TestCase):
         self.assertEqual(get_remaining('\xff\xff\xff\x7f', exception=False), 268435455)
 
     def test_wrong_gen_string(self):
-        self.assertEqual(gen_string(None), None)
+        self.assertEqual(gen_string(None), '')
         self.assertEqual(gen_string(object), None)
         self.assertRaises(UnicodeDecodeError, gen_string, '\xff')
         self.assertRaises(TypeError, gen_string, None, exception=True)
@@ -102,7 +102,7 @@ class ProtocolTestCase(TestCase):
         self.assertEqual(get_string('\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E'), u'\u65E5\u672C\u8A9E')
 
     def test_wrong_get_string(self):
-        self.assertEqual(get_string(None), None)
+        self.assertEqual(get_string(None), '')
         self.assertEqual(get_string('\xff'), None)
         self.assertRaises(TypeError, get_string, object)
         self.assertRaises(struct.error, get_string, '\xff\xff')

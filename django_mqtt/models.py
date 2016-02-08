@@ -1,4 +1,5 @@
 from django_mqtt.signals import *
+from django_mqtt.protocol import *
 
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
@@ -9,12 +10,12 @@ import ssl
 import socket
 
 
-PROTO_MQTT_CONN_OK = 0
-PROTO_MQTT_CONN_ERROR_PROTO_VERSION = 1
-PROTO_MQTT_CONN_ERROR_INVALID_CLIENT = 2
-PROTO_MQTT_CONN_ERROR_UNAVAILABLE = 3
-PROTO_MQTT_CONN_ERROR_BAD_USER = 4
-PROTO_MQTT_CONN_ERROR_NOT_AUTH = 5
+PROTO_MQTT_CONN_OK = mqtt.CONNACK_ACCEPTED
+PROTO_MQTT_CONN_ERROR_PROTO_VERSION = mqtt.CONNACK_REFUSED_PROTOCOL_VERSION
+PROTO_MQTT_CONN_ERROR_INVALID_CLIENT = mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED
+PROTO_MQTT_CONN_ERROR_UNAVAILABLE = mqtt.CONNACK_REFUSED_SERVER_UNAVAILABLE
+PROTO_MQTT_CONN_ERROR_BAD_USER = mqtt.CONNACK_REFUSED_BAD_USERNAME_PASSWORD
+PROTO_MQTT_CONN_ERROR_NOT_AUTH = mqtt.CONNACK_REFUSED_NOT_AUTHORIZED
 PROTO_MQTT_CONN_ERROR_UNKNOWN = 6
 PROTO_MQTT_CONN_ERROR_GENERIC = 100
 PROTO_MQTT_CONN_ERROR_ADDR_FAILED = 191
@@ -55,9 +56,9 @@ PROTO_MQTT_VERSION = (
     (mqtt.MQTTv311, 'v3.1.1'),
 )
 PROTO_MQTT_QoS = (
-    (0, 'QoS 0: Delivered at most once'),
-    (1, 'QoS 1: Always delivered at least once'),
-    (2, 'QoS 2: Always delivered exactly once'),
+    (MQTT_QoS0, 'QoS 0: Delivered at most once'),
+    (MQTT_QoS1, 'QoS 1: Always delivered at least once'),
+    (MQTT_QoS2, 'QoS 2: Always delivered exactly once'),
 )
 PROTO_MQTT_CONN_STATUS = (
     (PROTO_MQTT_CONN_OK, 'Connection successful'),
