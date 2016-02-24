@@ -62,6 +62,10 @@ MQTT_SUBACK_QoS1 = MQTT_QoS1
 MQTT_SUBACK_QoS2 = MQTT_QoS2
 MQTT_SUBACK_FAILURE = 0x80
 
+TOPIC_SEP = '/'
+WILDCARD_SINGLE_LEVEL = '+'
+WILDCARD_MULTI_LEVEL = '#'
+
 
 def remaining2list(remain, exception=False):
     bytes_remain = []
@@ -157,7 +161,7 @@ def gen_string(uni_str, exception=False):
     if not hasattr(uni_str, 'encode'):
         if exception:
             raise TypeError('uni_str required function encode(format)')
-        return None
+        return ''
     utf8_str = uni_str.encode('utf8')
     str_size = len(utf8_str)
     fmt = "!H"+("B"*str_size)
