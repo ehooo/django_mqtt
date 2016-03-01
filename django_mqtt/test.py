@@ -68,7 +68,7 @@ class ProtocolTestCase(TestCase):
 
     def test_wrong_gen_string(self):
         self.assertEqual(gen_string(None), '')
-        self.assertEqual(gen_string(object), None)
+        self.assertEqual(gen_string(object), '')
         self.assertRaises(UnicodeDecodeError, gen_string, '\xff')
         self.assertRaises(TypeError, gen_string, None, exception=True)
         self.assertRaises(TypeError, gen_string, object, exception=True)

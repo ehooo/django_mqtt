@@ -3,7 +3,7 @@ from __future__ import absolute_import
 from django.utils.translation import ugettext_lazy as _
 from django.core.management.base import BaseCommand, CommandError
 
-from django_mqtt.models import MQTTClient
+from django_mqtt.publisher.models import Client
 
 
 def on_connect(client, userdata, flags, rc):
@@ -69,7 +69,7 @@ class Command(BaseCommand):
         if options['id'] is None:
             if options['client_id']:
                 filter['client_id'] = options['client_id']
-            clients = MQTTClient.objects.filter(**filter)
+            clients = Client.objects.filter(**filter)
             if clients.count() == 1:
                 id = clients.all()[0].pk
             else:
@@ -77,7 +77,7 @@ class Command(BaseCommand):
                 for obj in clients.all():
                     print obj.pk, '->', obj
                 id = input("Select id from DB: ")
-        obj = MQTTClient.objects.get(pk=id)
+        obj = Client.objects.get(pk=id)
         cli = obj.get_mqtt_client()
 
         cli.on_connect = on_connect

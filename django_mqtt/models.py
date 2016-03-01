@@ -1,310 +1,143 @@
-from django_mqtt.signals import *
-from django_mqtt.protocol import *
+from datetime import datetime
+from datetime import timedelta
+import random
+import six
 
-from django.core.files.storage import FileSystemStorage
+from django.core.validators import RegexValidator, MinLengthValidator
+from django.contrib.auth.models import User, Group
 from django.conf import settings
 from django.db import models
 
-import paho.mqtt.client as mqtt
-import ssl
-import socket
+
+from django_mqtt.protocol import WILDCARD_SINGLE_LEVEL, WILDCARD_MULTI_LEVEL
+from django_mqtt.protocol import TOPIC_SEP, TOPIC_BEGINNING_DOLLAR
 
 
-PROTO_MQTT_CONN_OK = mqtt.CONNACK_ACCEPTED
-PROTO_MQTT_CONN_ERROR_PROTO_VERSION = mqtt.CONNACK_REFUSED_PROTOCOL_VERSION
-PROTO_MQTT_CONN_ERROR_INVALID_CLIENT = mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED
-PROTO_MQTT_CONN_ERROR_UNAVAILABLE = mqtt.CONNACK_REFUSED_SERVER_UNAVAILABLE
-PROTO_MQTT_CONN_ERROR_BAD_USER = mqtt.CONNACK_REFUSED_BAD_USERNAME_PASSWORD
-PROTO_MQTT_CONN_ERROR_NOT_AUTH = mqtt.CONNACK_REFUSED_NOT_AUTHORIZED
-PROTO_MQTT_CONN_ERROR_UNKNOWN = 6
-PROTO_MQTT_CONN_ERROR_GENERIC = 100
-PROTO_MQTT_CONN_ERROR_ADDR_FAILED = 191
-PROTO_MQTT_CONN_ERROR_INTERRUPTED = 200
-PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED = 201
-PROTO_MQTT_CONN_ERROR_FAULT_NETWORK = 202
-PROTO_MQTT_CONN_ERROR_INVALID = 203
-PROTO_MQTT_CONN_ERROR_BLOCK = 204
-PROTO_MQTT_CONN_ERROR_BLOCKING = 205
-PROTO_MQTT_CONN_ERROR_IN_USE = 206
-PROTO_MQTT_CONN_ERROR_RESET = 207
-PROTO_MQTT_CONN_ERROR_SHUTDOWN = 208
-PROTO_MQTT_CONN_ERROR_TIMEOUT = 209
-PROTO_MQTT_CONN_ERROR_REFUSED = 210
-PROTO_MQTT_CONN_ERROR_TOO_LONG = 211
-PROTO_MQTT_CONN_ERROR_DOWN = 212
-PROTO_MQTT_CONN_ERROR_UNREACHABLE = 213
-
-CERT_REQS = (
-    (ssl.CERT_REQUIRED, 'Required'),
-    (ssl.CERT_OPTIONAL, 'Optional'),
-    (ssl.CERT_NONE, 'None'),
-)
-PROTO_SSL_VERSION = (
-    (ssl.PROTOCOL_TLSv1, 'v1'),
-    (ssl.PROTOCOL_SSLv23, 'v2.3'),
-)
-try:
-    PROTO_SSL_VERSION.append((ssl.PROTOCOL_SSLv2, 'v2'))
-except AttributeError:
-    pass  # This protocol is not available if OpenSSL is compiled with the OPENSSL_NO_SSL2 flag.
-try:
-    PROTO_SSL_VERSION.append((ssl.PROTOCOL_SSLv3, 'v3'))
-except AttributeError:
-    pass  # This protocol is not be available if OpenSSL is compiled with the OPENSSL_NO_SSLv3 flag.
-PROTO_MQTT_VERSION = (
-    (mqtt.MQTTv31, 'v3.1'),
-    (mqtt.MQTTv311, 'v3.1.1'),
-)
-PROTO_MQTT_QoS = (
-    (MQTT_QoS0, 'QoS 0: Delivered at most once'),
-    (MQTT_QoS1, 'QoS 1: Always delivered at least once'),
-    (MQTT_QoS2, 'QoS 2: Always delivered exactly once'),
-)
-PROTO_MQTT_CONN_STATUS = (
-    (PROTO_MQTT_CONN_OK, 'Connection successful'),
-    (PROTO_MQTT_CONN_ERROR_PROTO_VERSION, 'Connection refused - incorrect protocol version'),
-    (PROTO_MQTT_CONN_ERROR_INVALID_CLIENT, 'Connection refused - invalid client identifier'),
-    (PROTO_MQTT_CONN_ERROR_UNAVAILABLE, 'Connection refused - server unavailable'),
-    (PROTO_MQTT_CONN_ERROR_BAD_USER, 'Connection refused - bad username or password'),
-    (PROTO_MQTT_CONN_ERROR_NOT_AUTH, 'Connection refused - not authorised'),
-    (PROTO_MQTT_CONN_ERROR_UNKNOWN, 'Unknown'),
-
-    (PROTO_MQTT_CONN_ERROR_GENERIC, 'Connection error'),
-    (PROTO_MQTT_CONN_ERROR_ADDR_FAILED, 'Connection error - Get address info failed'),
-
-    (PROTO_MQTT_CONN_ERROR_INTERRUPTED, 'Connection error - The operation was interrupted'),
-    (PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED, 'Connection error - Permission denied'),
-    (PROTO_MQTT_CONN_ERROR_FAULT_NETWORK, 'Connection error - A fault occurred on the network'),
-    (PROTO_MQTT_CONN_ERROR_INVALID, 'Connection error - An invalid operation was attempted'),
-    (PROTO_MQTT_CONN_ERROR_BLOCK, 'Connection error - The socket operation would block'),
-    (PROTO_MQTT_CONN_ERROR_BLOCKING, 'Connection error - A blocking operation is already in progress'),
-    (PROTO_MQTT_CONN_ERROR_IN_USE, 'Connection error - The network address is in use'),
-    (PROTO_MQTT_CONN_ERROR_RESET, 'Connection error - The connection has been reset'),
-    (PROTO_MQTT_CONN_ERROR_SHUTDOWN, 'Connection error - The network has been shut down'),
-    (PROTO_MQTT_CONN_ERROR_TIMEOUT, 'Connection error - The operation timed out'),
-    (PROTO_MQTT_CONN_ERROR_REFUSED, 'Connection error - Connection refused'),
-    (PROTO_MQTT_CONN_ERROR_TOO_LONG, 'Connection error - The name is too long'),
-    (PROTO_MQTT_CONN_ERROR_DOWN, 'Connection error - The host is down'),
-    (PROTO_MQTT_CONN_ERROR_UNREACHABLE, 'Connection error - The host is unreachable'),
+PROTO_MQTT_ACC_SUS = 1
+PROTO_MQTT_ACC_PUB = 2
+PROTO_MQTT_ACC = (
+    (PROTO_MQTT_ACC_SUS, 'Suscriptor'),
+    (PROTO_MQTT_ACC_PUB, 'Publisher'),
 )
 
 
-private_location = settings.BASE_DIR
-if hasattr(settings, 'MQTT_CERTS_ROOT'):
-    private_location = settings.MQTT_CERTS_ROOT
-private_fs = FileSystemStorage(location=private_location)
+class Topic(models.Model):
+    name = models.CharField(max_length=1024, validators=[
+        MinLengthValidator(1),
+    ], db_index=True, unique=True)
+
+    def __unicode__(self):
+        return self.name
+
+    def __str__(self):
+        return self.name
+
+    def __eq__(self, other):
+        if isinstance(other, Topic):
+            return self.name == other.name
+        elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
+            return self.name == other
+        return False
+
+    def is_wildcard(self):
+        return WILDCARD_MULTI_LEVEL in self.name or WILDCARD_SINGLE_LEVEL in self.name
+
+    def is_dollar(self):
+        return self.name.startswith(TOPIC_BEGINNING_DOLLAR)
+
+    def __contains__(self, item):
+        comp = None
+        if isinstance(item, Topic):
+            comp = item
+        elif isinstance(item, six.string_types) or isinstance(item, six.text_type):
+            comp = Topic(name=item)
+        if not comp:
+            return False
+
+        if self == comp:
+            return True
+        elif not self.is_wildcard():
+            return False
+        elif (self.is_dollar() and not comp.is_dollar()) or (comp.is_dollar() and not self.is_dollar()):
+            return False
+
+        my_parts = self.name.split(TOPIC_SEP)
+        comp_parts = comp.name.split(TOPIC_SEP)
+        if self.is_dollar():
+            if my_parts[0] != comp_parts[0]:
+                return False
+        pos = -1
+        comp_size = len(comp_parts)
+        for part in my_parts:
+            pos += 1
+            if pos >= comp_size:
+                return False
+            if part == WILDCARD_SINGLE_LEVEL:
+                continue
+            elif part == WILDCARD_MULTI_LEVEL:
+                return True
+            if part != comp_parts[pos]:
+                return False
+
+        if comp_size == len(my_parts):
+            return True
+        return False
 
 
-class MQTTSecureConf(models.Model):
-    """
-        :var ca_certs: a string path to the Certificate Authority certificate files that are to be treated as trusted
-        by this client.
-        If this is the only option given then the client will operate in a similar manner to a web browser.
-        That is to say it will require the broker to have a certificate signed by the Certificate Authorities in
-        ca_certs and will communicate using TLS v1, but will not attempt any form of authentication.
-        This provides basic network encryption but may not be sufficient depending on how the broker is configured.
-
-        :var cert_reqs: allows the certificate requirements that the client imposes on the broker to be changed.
-        By default this is ssl.CERT_REQUIRED, which means that the broker must provide a certificate.
-
-        :var tls_version: allows the version of the SSL/TLS protocol used to be specified.
-        By default TLS v1 is used. Previous versions (all versions beginning with SSL) are possible but not recommended
-        due to possible security problems.
-
-        :var certfile and keyfile: are PEM encoded client certificate and private keys files respectively.
-        If these arguments are not None then they will be used as client information for TLS based authentication.
-        Support for this feature is broker dependent. Note that if either of these files in encrypted and needs a
-        password to decrypt it, Python will ask for the password at the command line.
-
-        :var ciphers: is a string specifying which encryption ciphers are allowable for this connection,
-or None to use the defaults.
-    """
-    ca_certs = models.CharField(max_length=1024)
-    cert_reqs = models.IntegerField(choices=CERT_REQS, default=ssl.CERT_REQUIRED)
-    tls_version = models.IntegerField(choices=PROTO_SSL_VERSION, default=ssl.PROTOCOL_TLSv1)
-    certfile = models.FileField(upload_to='certs', storage=private_fs, blank=True, null=True)
-    keyfile = models.FileField(upload_to='keys', storage=private_fs, blank=True, null=True)
-    ciphers = models.CharField(max_length=1024, blank=True, null=True, default=None)
-
-
-class MQTTServer(models.Model):
-    """
-        :var hostname : a string containing the address of the broker to connect to. Defaults to localhost.
-
-        :var port : the port to connect to the broker on. Defaults to 1883.
-
-        :var secure : the secure configuration. Default None.
-
-        :var protocol : Setting of the MQTT version to use for this client. Can be mqtt.MQTTv31 or mqttt.MQTTv311
-        If the broker reports that the client connected with an invalid protocol version,
-        the client will automatically attempt to reconnect using v3.1 instead. Default mqttt.MQTTv311
-    """
-    host = models.CharField(max_length=1024)
-    port = models.IntegerField(default=1883)
-    secure = models.ForeignKey(MQTTSecureConf, null=True, blank=True)
-    protocol = models.IntegerField(choices=PROTO_MQTT_VERSION, default=mqtt.MQTTv311)
-    status = models.IntegerField(choices=PROTO_MQTT_CONN_STATUS, default=PROTO_MQTT_CONN_ERROR_UNKNOWN)
+class ACL(models.Model):
+    allow = models.BooleanField(default=True)
+    topic = models.ForeignKey(Topic)  # There is many of acc options by topic
+    acc = models.IntegerField(choices=PROTO_MQTT_ACC)
+    users = models.ManyToManyField(User)
+    groups = models.ManyToManyField(Group)
 
     class Meta:
-        unique_together = ['host', 'port']
+        unique_together = ('topic', 'acc')
 
-    def __str__(self):
-        return "mqtt://%s:%s" % (self.host, self.port)
+    @classmethod
+    def get_acls(cls, topic, acc):
+        comp = None
+        if isinstance(topic, Topic):
+            comp = topic
+        elif isinstance(topic, six.string_types) or isinstance(topic, six.text_type):
+            comp = Topic(name=topic)
+        if not comp:
+            return cls.objects.none()
+        acls = cls.objects.filter(acc=acc)
+        if comp.is_dollar():
+            pass
 
-    def __unicode__(self):
-        return "mqtt://%s:%s" % (self.host, self.port)
-
-
-class MQTTAuth(models.Model):
-    """
-        :var user : a string containing user name
-
-        :var password : a string containing user password
-    """
-    user = models.CharField(max_length=1024)
-    password = models.CharField(max_length=1024, blank=True, null=True)
-
-    def __str__(self):
-        return "%s:%s" % (self.user, '*' * len(self.password))
-
-    def __unicode__(self):
-        return "%s:%s" % (self.user, '*' * len(self.password))
-
-
-class MQTTClient(models.Model):
-    """
-        :var server : the server data for send information.
-
-        :var server : the server data for send information.
-
-        :var keepalive : the keepalive timeout value for the client. Defaults to 60 seconds.
-
-        :var clean_session : is a boolean that determines the client type. If True, the broker will remove all
-        information about this client when it disconnects.
-        If False, the client is a persistent client and subscription information and queued messages will be retained
-        when the client disconnects.
-    """
-    server = models.ForeignKey(MQTTServer)
-    auth = models.ForeignKey(MQTTAuth, blank=True, null=True)
-    client_id = models.CharField(max_length=1024, blank=True, null=True)
-
-    keepalive = models.IntegerField(default=60)
-    clean_session = models.BooleanField(default=True)
-
-    def __str__(self):
-        return "%s - %s" % (self.client_id, self.server)
-
-    def __unicode__(self):
-        return "%s - %s" % (self.client_id, self.server)
-
-    def get_mqtt_client(self, empty_client_id=False):
-        client_id = self.client_id
-        if not self.clean_session and empty_client_id:
-            client_id = None
-        cli = mqtt.Client(client_id, self.clean_session, protocol=self.server.protocol)
-        if self.server.secure:
-            tls_args = {
-                'cert_reqs': self.server.secure.cert_reqs,
-                'tls_version': self.server.secure.tls_version,
-                'ciphers': self.server.secure.ciphers
-            }
-            if self.server.secure.certfile:  # TODO check the path
-                tls_args['certfile'] = self.server.secure.certfile.name
-            if self.server.secure.keyfile:
-                tls_args['keyfile'] = self.server.secure.keyfile.path
-            cli.tls_set(self.server.secure.ca_certs, **tls_args)
-
-        if self.auth:
-            cli.username_pw_set(self.auth.user, self.auth.password)
-        return cli
-
-
-class MQTTData(models.Model):
-    """
-        :var client : the client id to send information.
-
-        :var topic : the server topic.
-
-        :var keepalive : the keepalive timeout value for the client. Defaults to 60 seconds.
-
-        :var qos : Quality of Service code
-
-        :var payload : The payload to send
-
-        :var retain : If retain the data
-
-        :var datetime : Datetime of last change
-    """
-    client = models.ForeignKey(MQTTClient)
-    topic = models.CharField(max_length=1024)
-    qos = models.IntegerField(choices=PROTO_MQTT_QoS, default=0)
-    payload = models.TextField(blank=True, null=True)
-    retain = models.BooleanField(default=False)
-    datetime = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ['client', 'topic']
-
-    def __str__(self):
-        return "%s - %s - %s" % (self.payload, self.topic, self.client)
-
-    def __unicode__(self):
-        return "%s - %s - %s" % (self.payload, self.topic, self.client)
-
-    def update_remote(self):
-        cli = self.client.get_mqtt_client()
+    @classmethod
+    def get_default(cls, acc, user=None):
+        """
+            :type user: django.contrib.auth.models.User
+            :param user:
+            :return: bool
+        """
+        allow = False
+        if hasattr(settings, 'MQTT_ACL_ALLOW'):
+            allow = settings.MQTT_ACL_ALLOW
+        if allow and hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
+            if user is None:
+                allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
+            elif user.is_anonymous():
+                allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
         try:
-            mqtt_connect.send(sender=MQTTServer.__class__, client=self.client)
-            cli.connect(self.client.server.host, self.client.server.port, self.client.keepalive)
-            mqtt_pre_publish.send(sender=MQTTData.__class__, client=self.client,
-                                  topic=self.topic, payload=self.payload, qos=self.qos, retain=self.retain)
-            (rc, mid) = cli.publish(self.topic, self.payload, self.qos, self.retain)
-            self.client.server.status = rc
-            self.client.server.save()
-            mqtt_publish.send(sender=MQTTClient.__class__, client=self.client, userdata=cli._userdata, mid=mid)
-            cli.loop_write()
-            if not self.client.client_id:
-                self.client.client_id = cli._client_id
-                self.client.save()
-            cli.disconnect()
-            mqtt_disconnect.send(sender=MQTTServer.__class__, client=self.client, userdata=cli._userdata, rc=rc)
-        except socket.gaierror as ex:
-            # See PROTO_MQTT_CONN_ERROR
-            if ex.errno == 11004:
-                self.client.server.status = 191
+            broadcast_topic = Topic.objects.get(name='#')
+            broadcast = cls.objects.get(topic=broadcast_topic, acc=acc)
+            if broadcast.is_public():
+                allow = broadcast.allow
+            elif broadcast.users.filter(pk=user.pk).count() > 0:
+                allow = broadcast.allow
+            elif broadcast.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
+                allow = broadcast.allow
             else:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
-            self.client.server.save()
-        except IOError as ex:
-            # See in socket: WSA error codes
-            if ex.errno == 10004:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_INTERRUPTED
-            elif ex.errno == 10013:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED
-            elif ex.errno == 10014:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_FAULT_NETWORK
-            elif ex.errno == 10022:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_INVALID
-            elif ex.errno == 10035:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCK
-            elif ex.errno == 10036:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCKING
-            elif ex.errno == 10048:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_IN_USE
-            elif ex.errno == 10054:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_RESET
-            elif ex.errno == 10058:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_SHUTDOWN
-            elif ex.errno == 10060:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_TIMEOUT
-            elif ex.errno == 10061:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_REFUSED
-            elif ex.errno == 10063:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_TOO_LONG
-            elif ex.errno == 10064:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_DOWN
-            elif ex.errno == 10065:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_UNREACHABLE
-            else:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
-            self.client.server.save()
+                allow = not broadcast.allow
+        except cls.DoesNotExist:
+            pass
+        except Topic.DoesNotExist:
+            pass
+        return allow
+
+    def is_public(self):
+        return self.users.count() == 0 and self.groups.count()

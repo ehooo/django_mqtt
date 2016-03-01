@@ -4,7 +4,7 @@ from django.test import TestCase, Client
 from django.core.urlresolvers import reverse
 from django.conf import settings
 
-from django_mqtt.mosquitto.auth_plugin import models
+from django_mqtt import models
 
 
 class AuthTestCase(TestCase):
@@ -65,30 +65,30 @@ class AclTestCase(TestCase):
         User.objects.create_user('test', 'test@test.com', 'test')
         user_login = User.objects.get(username='test')
         User.objects.create_superuser('admin', 'admin@test.com', 'admin')
-        self.topic_public_publish = '/test/publisher/allow'
-        self.topic_forbidden_publish = '/test/publisher/disallow'
-        self.topic_private_publish = '/test/subscriber/login'
-        self.topic_public_subs = '/test/subscriber/allow'
-        self.topic_forbidden_subs = '/test/subscriber/disallow'
-        self.topic_private_subs = '/test/subscriber/login'
-        models.MQTT_ACL.objects.create(
+        self.topic_public_publish, is_new = models.Topic.objects.get_or_create(name='/test/publisher/allow')
+        self.topic_forbidden_publish, is_new = models.Topic.objects.get_or_create(name='/test/publisher/disallow')
+        self.topic_private_publish, is_new = models.Topic.objects.get_or_create(name='/test/subscriber/login')
+        self.topic_public_subs, is_new = models.Topic.objects.get_or_create(name='/test/subscriber/allow')
+        self.topic_forbidden_subs, is_new = models.Topic.objects.get_or_create(name='/test/subscriber/disallow')
+        self.topic_private_subs, is_new = models.Topic.objects.get_or_create(name='/test/subscriber/login')
+        models.ACL.objects.create(
             allow=True, topic=self.topic_public_publish,
-            acc=models.PROTO_MQTT_ACC_PUB, user=None)
-        models.MQTT_ACL.objects.create(
+            acc=models.PROTO_MQTT_ACC_PUB)
+        models.ACL.objects.create(
             allow=False, topic=self.topic_forbidden_publish,
-            acc=models.PROTO_MQTT_ACC_PUB, user=None)
-        models.MQTT_ACL.objects.create(
+            acc=models.PROTO_MQTT_ACC_PUB)
+        models.ACL.objects.create(
             allow=True, topic=self.topic_private_publish,
-            acc=models.PROTO_MQTT_ACC_PUB, user=user_login)
-        models.MQTT_ACL.objects.create(
+            acc=models.PROTO_MQTT_ACC_PUB).users.add(user_login)
+        models.ACL.objects.create(
             allow=True, topic=self.topic_public_subs,
-            acc=models.PROTO_MQTT_ACC_SUS, user=None)
-        models.MQTT_ACL.objects.create(
+            acc=models.PROTO_MQTT_ACC_SUS)
+        models.ACL.objects.create(
             allow=False, topic=self.topic_forbidden_subs,
-            acc=models.PROTO_MQTT_ACC_SUS, user=None)
-        models.MQTT_ACL.objects.create(
+            acc=models.PROTO_MQTT_ACC_SUS)
+        models.ACL.objects.create(
             allow=True, topic=self.topic_private_subs,
-            acc=models.PROTO_MQTT_ACC_SUS, user=user_login)
+            acc=models.PROTO_MQTT_ACC_SUS).users.add(user_login)
         self.url_testing = reverse('mqtt_acl')
         self.client = Client()
 
@@ -239,3 +239,6 @@ class AclTestCase(TestCase):
                                      'acc': models.PROTO_MQTT_ACC_SUS,
                                      'topic': self.topic_private_subs})
         self.assertEqual(response.status_code, 403)
+
+    def test_wildcards(self):
+        pass  # TODO
