@@ -127,9 +127,9 @@ class ACL(models.Model):
             broadcast = cls.objects.get(topic=broadcast_topic, acc=acc)
             if broadcast.is_public():
                 allow = broadcast.allow
-            elif broadcast.users.filter(pk=user.pk).count() > 0:
+            elif user and broadcast.users.filter(pk=user.pk).count() > 0:
                 allow = broadcast.allow
-            elif broadcast.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
+            elif user and broadcast.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
                 allow = broadcast.allow
             else:
                 allow = not broadcast.allow
@@ -140,4 +140,4 @@ class ACL(models.Model):
         return allow
 
     def is_public(self):
-        return self.users.count() == 0 and self.groups.count()
+        return self.users.count() == 0 and self.groups.count() == 0

@@ -1,5 +1,6 @@
 import paho.mqtt.client as mqtt
 import struct
+import re
 
 
 MQTTTypes = [
@@ -20,6 +21,8 @@ MQTTTypes = [
     mqtt.DISCONNECT,
     15
 ]
+
+MQTT_CLIENT_ID_RE = re.compile('[0-9a-zA-Z]{1,23}')
 
 MQTT_QoS0 = int('00', 2)
 MQTT_QoS1 = int('01', 2)
@@ -146,12 +149,20 @@ def get_string(buff, exception=False):
     if not buff or len(buff) < 2:
         if exception:
             raise TypeError('required Buff')
-        return None
-    str_size, = struct.unpack_from("!H", buff[:2])
-    fmt = "!"+("B"*str_size)
-    utf8_str = struct.unpack_from(fmt, buff, struct.calcsize("!H"))
-    byte_str = map(chr, utf8_str)
-    return ''.join(byte_str).decode('utf8')
+        return ''
+    try:
+        str_size, = struct.unpack_from("!H", buff[:2])
+        fmt = "!"+("B"*str_size)
+        utf8_str = struct.unpack_from(fmt, buff, struct.calcsize("!H"))
+        byte_str = map(chr, utf8_str)
+        return ''.join(byte_str).decode('utf8')
+    except UnicodeEncodeError as er:
+        if exception:
+            raise er
+    except struct.error as er:
+        if exception:
+            raise er
+    return ''
 
 
 def gen_string(uni_str, exception=False):
@@ -163,8 +174,16 @@ def gen_string(uni_str, exception=False):
         if exception:
             raise TypeError('uni_str required function encode(format)')
         return ''
-    utf8_str = uni_str.encode('utf8')
-    str_size = len(utf8_str)
-    fmt = "!H"+("B"*str_size)
-    byte_str = map(ord, utf8_str)
-    return struct.pack(fmt, str_size, *byte_str)
+    try:
+        utf8_str = uni_str.encode('utf8')
+        str_size = len(utf8_str)
+        fmt = "!H"+("B"*str_size)
+        byte_str = map(ord, utf8_str)
+        return struct.pack(fmt, str_size, *byte_str)
+    except UnicodeEncodeError as ex:
+        if exception:
+            raise ex
+    except struct.error as er:
+        if exception:
+            raise er
+    return ''

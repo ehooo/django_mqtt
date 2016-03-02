@@ -1,6 +1,9 @@
 Django-MQTT [![Build Status](https://travis-ci.org/ehooo/django_mqtt.svg?branch=master)](https://travis-ci.org/ehooo/django_mqtt)
 ===========
-It is a django module that allow send your information stored in your database to MQTT server as MQTT Publisher.
+It is a django module that allow your:
+- Mosquito Auth configured with [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug)
+- Automatic MQTT replay
+- MQTT server
 
 
 Install
@@ -12,18 +15,23 @@ INSTALLED_APPS = (
   'django.contrib.admin',
   'django.contrib.auth',
   ...
-  'django_mqtt.mosquitto.auth_plugin',
   'django_mqtt',
+  'django_mqtt.mosquitto.auth_plugin',
+  'django_mqtt.publisher',
+  'django_mqtt.server',
   ...
 )
 
-# Used for storage certs and keys
+# Used for storage certs and keys if 'django_mqtt.publisher' is Installed
 MQTT_CERTS_ROOT = /path/to/private/certs/storage
 # Test Example: MQTT_CERTS_ROOT = os.path.join(BASE_DIR, 'private')
+
+# Used for 'django_mqtt' if 'django_mqtt.server' or 'django_mqtt.mosquitto.auth_plugin' is Installed 
 # Optional MQTT_ACL_ALLOW indicated if must allow topic not asigned for the user 
 MQTT_ACL_ALLOW = False
 # Optional MQTT_ACL_ALLOW_ANONIMOUS indicated if must allow topic not valid users
 MQTT_ACL_ALLOW_ANONIMOUS = MQTT_ACL_ALLOW
+
 ```
 
 
@@ -31,10 +39,10 @@ Setting Up
 ==========
 Browser to your admin page and configure: broken servers, auth and client data.
 
-You can add the following code for send MQTTData model when new one are created:
+You can add the following code for send Data model when new one are created:
 ```
 from django.db.models.signals import post_save
-from django_mqtt.models import MQTTData
+from django_mqtt.publisher.models import Data as MQTTData
 
 def update_mqtt_data(sender, **kwargs):
     obj = kwargs["instance"]
@@ -48,7 +56,7 @@ Or you can auto-send with any change using:
 ```
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django_mqtt.models import MQTTData
+from django_mqtt.publisher.models import Data as MQTTData
 
 @receiver(post_save, sender=MQTTData)
 def auto_update(sender, instance, **kwargs):
@@ -59,28 +67,28 @@ Attach signals
 ==============
 You can also attach django Signals for monitoring publisher, connection and disconnection.
 ```
-from django_mqtt.models import *
-from django_mqtt.signals import *
+from django_mqtt.publisher.models import *
+from django_mqtt.publisher.signals import *
 
 def before_connect(sender, client):
-    if not isinstance(client, MQTTClient):
-        raise AttributeError('client must be MQTTClient object')
-mqtt_connect.connect(receiver=before_connect, sender=MQTTServer, dispatch_uid='my_django_mqtt_before_connect')
+    if not isinstance(client, Client):
+        raise AttributeError('client must be Client object')
+mqtt_connect.connect(receiver=before_connect, sender=Server, dispatch_uid='my_django_mqtt_before_connect')
 
 def before_publish(sender, client, topic, payload, qos, retain):
-    if not isinstance(client, MQTTClient):
-        raise AttributeError('client must be MQTTClient object')
-mqtt_pre_publish.connect(receiver=before_publish, sender=MQTTData, dispatch_uid='my_django_mqtt_before_publish')
+    if not isinstance(client, Client):
+        raise AttributeError('client must be Client object')
+mqtt_pre_publish.connect(receiver=before_publish, sender=Data, dispatch_uid='my_django_mqtt_before_publish')
 
 def then_publish(sender, client, userdata, mid):
-    if not isinstance(client, MQTTClient):
-        raise AttributeError('client must be MQTTClient object')
-mqtt_publish.connect(receiver=then_publish, sender=MQTTClient, dispatch_uid='my_django_mqtt_then_publish')
+    if not isinstance(client, Client):
+        raise AttributeError('client must be Client object')
+mqtt_publish.connect(receiver=then_publish, sender=Client, dispatch_uid='my_django_mqtt_then_publish')
 
 def then_disconnect(sender, client, userdata, rc):
     if not isinstance(client, MQTTClient):
         raise AttributeError('client must be MQTTClient object')
-mqtt_disconnect.connect(receiver=then_disconnect, sender=MQTTServer, dispatch_uid='my_django_mqtt_then_disconnect')
+mqtt_disconnect.connect(receiver=then_disconnect, sender=Server, dispatch_uid='my_django_mqtt_then_disconnect')
 ```
 
 

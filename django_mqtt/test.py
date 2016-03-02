@@ -103,11 +103,15 @@ class ProtocolTestCase(TestCase):
 
     def test_wrong_get_string(self):
         self.assertEqual(get_string(None), '')
-        self.assertEqual(get_string('\xff'), None)
+        self.assertEqual(get_string('\xff'), '')
+        self.assertEqual(get_string('\x00\x00\xC1'), '')
         self.assertRaises(TypeError, get_string, object)
-        self.assertRaises(struct.error, get_string, '\xff\xff')
-        self.assertRaises(struct.error, get_string, '\xff\xff\x00')
-        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x04\xC0\xC1\xF5\xFF')
+        self.assertRaises(struct.error, get_string, '\xff\xff', exception=True)
+        self.assertRaises(struct.error, get_string, '\xff\xff\x00', exception=True)
+        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xC0', exception=True)
+        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xC1', exception=True)
+        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xF5', exception=True)
+        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xFF', exception=True)
         self.assertRaises(TypeError, get_string, None, exception=True)
         self.assertRaises(TypeError, get_string, object, exception=True)
 
