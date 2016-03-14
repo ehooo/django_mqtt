@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt
 
 from django_mqtt.publisher.signals import *
 from django_mqtt.protocol import *
-from django_mqtt.models import Topic
+from django_mqtt.models import Topic, ClientId
 
 
 PROTO_MQTT_CONN_OK = mqtt.CONNACK_ACCEPTED
@@ -187,7 +187,7 @@ class Client(models.Model):
     """
     server = models.ForeignKey(Server)
     auth = models.ForeignKey(Auth, blank=True, null=True)
-    client_id = models.CharField(max_length=1024, blank=True, null=True)
+    client_id = models.ForeignKey(ClientId, null=True, blank=True)
 
     keepalive = models.IntegerField(default=60)
     clean_session = models.BooleanField(default=True)

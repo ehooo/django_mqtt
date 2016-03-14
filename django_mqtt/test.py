@@ -2,6 +2,7 @@
 from django.test import TestCase
 
 from django_mqtt.protocol import *
+from django_mqtt import test_models
 
 
 class ProtocolTestCase(TestCase):
@@ -104,10 +105,13 @@ class ProtocolTestCase(TestCase):
     def test_wrong_get_string(self):
         self.assertEqual(get_string(None), '')
         self.assertEqual(get_string('\xff'), '')
-        self.assertEqual(get_string('\x00\x00\xC1'), '')
+        self.assertEqual(get_string('\x00\x00\x01'), '')
+        self.assertEqual(get_string('\x00\x01\x00'), '\x00')
+        self.assertEqual(get_string('\x00\x02\x00\x00'), '')
         self.assertRaises(TypeError, get_string, object)
         self.assertRaises(struct.error, get_string, '\xff\xff', exception=True)
         self.assertRaises(struct.error, get_string, '\xff\xff\x00', exception=True)
+        self.assertRaises(ValueError, get_string, '\x00\x02\x00\x00', exception=True)
         self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xC0', exception=True)
         self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xC1', exception=True)
         self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xF5', exception=True)

@@ -1,11 +1,12 @@
 from datetime import datetime
 from datetime import timedelta
-import random
+import hashlib
 import six
 
-from django.core.validators import RegexValidator, MinLengthValidator
+from django_mqtt.validators import *
 from django.contrib.auth.models import User, Group
 from django.conf import settings
+from django.db.models import Q
 from django.db import models
 
 
@@ -20,11 +21,47 @@ PROTO_MQTT_ACC = (
     (PROTO_MQTT_ACC_PUB, 'Publisher'),
 )
 
+ALLOW_EMPTY_CLIENT_ID = False
+if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID'):
+    ALLOW_EMPTY_CLIENT_ID = settings.MQTT_ALLOW_EMPTY_CLIENT_ID
+
+
+class ClientId(models.Model):
+    name = models.CharField(max_length=23, db_index=True, blank=True,
+                            validators=[ClientIdValidator(valid_empty=ALLOW_EMPTY_CLIENT_ID)])
+    users = models.ManyToManyField(User, blank=True, null=True)
+    groups = models.ManyToManyField(Group, blank=True, null=True)
+
+    def is_public(self):
+        return self.users.count() == 0 and self.groups.count() == 0
+
+    def has_permission(self, user):
+        if not self.is_public():
+            if user in self.users or self.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
+                return True
+        return self.is_public()
+
+    def __unicode__(self):
+        return self.name
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        if not hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') or not settings.MQTT_ALLOW_EMPTY_CLIENT_ID:
+            if self.name == '':
+                raise ValidationError('Empty client_id not allowed', code='invalid')
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        self.full_clean()
+        return super(ClientId, self).save(force_insert=force_insert, force_update=force_update,
+                                          using=using, update_fields=update_fields)
+
 
 class Topic(models.Model):
-    name = models.CharField(max_length=1024, validators=[
-        MinLengthValidator(1),
-    ], db_index=True, unique=True)
+    name = models.CharField(max_length=1024, validators=[TopicValidator()], db_index=True, unique=True)
+    wildcard = models.BooleanField(default=False)
+    dollar = models.BooleanField(default=False)
 
     def __unicode__(self):
         return self.name
@@ -60,55 +97,87 @@ class Topic(models.Model):
             return False
         elif (self.is_dollar() and not comp.is_dollar()) or (comp.is_dollar() and not self.is_dollar()):
             return False
+        elif (self.is_dollar() and not comp.is_dollar()) or (comp.is_dollar() and not self.is_dollar()):
+            return False
 
         my_parts = self.name.split(TOPIC_SEP)
         comp_parts = comp.name.split(TOPIC_SEP)
         if self.is_dollar():
             if my_parts[0] != comp_parts[0]:
                 return False
-        pos = -1
+
         comp_size = len(comp_parts)
+        if comp_size < len(my_parts):
+            return False
+        if not self.name.endswith(WILDCARD_MULTI_LEVEL) and comp_size > len(my_parts):
+            return False
+
+        iter_comp = iter(comp_parts)
         for part in my_parts:
-            pos += 1
-            if pos >= comp_size:
-                return False
+            compare = iter_comp.next()
             if part == WILDCARD_SINGLE_LEVEL:
+                if comp.is_wildcard() and compare == WILDCARD_MULTI_LEVEL:
+                    return False
                 continue
             elif part == WILDCARD_MULTI_LEVEL:
                 return True
-            if part != comp_parts[pos]:
+            elif part != compare:
                 return False
+        return True
 
-        if comp_size == len(my_parts):
-            return True
-        return False
+    def __iter__(self):
+        if not self.is_wildcard():
+            yield self
+        else:
+            candidates = self.objects.filter(dollar=self.is_dollar(), wildcard=False)
+            topic = self.name
+            multi = False
+            if topic.endswith(WILDCARD_MULTI_LEVEL):
+                topic = topic[:-1]
+                multi = True
+
+            parts = topic.split(WILDCARD_SINGLE_LEVEL)
+            if len(parts) == 1:
+                if multi:
+                    candidates = candidates.filter(topic__name__startswith=self.name)
+                else:
+                    candidates = candidates.filter(topic__name=self.name)
+            else:
+                if multi:
+                    candidates = candidates.filter(topic__name__startswith=parts[0], topic__name__contains=parts[-1])
+                else:
+                    candidates = candidates.filter(topic__name__startswith=parts[0], topic__name__endswith=parts[-1])
+                for part in parts[1:-1]:
+                    candidates = candidates.filter(topic__name__contains=part)
+
+            for candidate in candidates.all():
+                if candidate in self:
+                    yield candidate
+
+    def save(self, force_insert=False, force_update=False, using=None,
+             update_fields=None):
+        self.wildcard = self.is_wildcard()
+        self.dollar = self.is_dollar()
+        self.full_clean()
+        return super(Topic, self).save(force_insert=force_insert, force_update=force_update,
+                                       using=using, update_fields=update_fields)
 
 
 class ACL(models.Model):
     allow = models.BooleanField(default=True)
     topic = models.ForeignKey(Topic)  # There is many of acc options by topic
     acc = models.IntegerField(choices=PROTO_MQTT_ACC)
-    users = models.ManyToManyField(User)
-    groups = models.ManyToManyField(Group)
+    users = models.ManyToManyField(User, blank=True, null=True)
+    groups = models.ManyToManyField(Group, blank=True, null=True)
+    password = models.CharField(max_length=512, blank=True, null=True,
+                                help_text='Only valid for connect')
+    only_username = models.NullBooleanField(default=None)
 
     class Meta:
         unique_together = ('topic', 'acc')
 
     @classmethod
-    def get_acls(cls, topic, acc):
-        comp = None
-        if isinstance(topic, Topic):
-            comp = topic
-        elif isinstance(topic, six.string_types) or isinstance(topic, six.text_type):
-            comp = Topic(name=topic)
-        if not comp:
-            return cls.objects.none()
-        acls = cls.objects.filter(acc=acc)
-        if comp.is_dollar():
-            pass
-
-    @classmethod
-    def get_default(cls, acc, user=None):
+    def get_default(cls, acc, user=None, password=None):  # TODO rename
         """
             :type user: django.contrib.auth.models.User
             :param user:
@@ -123,21 +192,33 @@ class ACL(models.Model):
             elif user.is_anonymous():
                 allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
         try:
-            broadcast_topic = Topic.objects.get(name='#')
+            broadcast_topic = Topic.objects.get(name=WILDCARD_MULTI_LEVEL)
             broadcast = cls.objects.get(topic=broadcast_topic, acc=acc)
-            if broadcast.is_public():
-                allow = broadcast.allow
-            elif user and broadcast.users.filter(pk=user.pk).count() > 0:
-                allow = broadcast.allow
-            elif user and broadcast.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
-                allow = broadcast.allow
-            else:
-                allow = not broadcast.allow
+            allow = broadcast.has_permission(user=user, password=password)
         except cls.DoesNotExist:
             pass
         except Topic.DoesNotExist:
             pass
         return allow
 
+    def set_pasword(self, new_password):
+        sha = hashlib.sha512(new_password)
+        self.password = sha.hexdigest()
+
     def is_public(self):
-        return self.users.count() == 0 and self.groups.count() == 0
+        return self.users.count() == 0 and self.groups.count() == 0 and self.password is None
+
+    def has_permission(self, user=None, password=None):
+        allow = False
+        if self.is_public():
+            allow = self.allow
+        else:
+            if user:
+                if user in self.users.all() or self.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
+                    allow = self.allow
+                else:
+                    allow = not self.allow
+            if self.password and password:
+                sha = hashlib.sha512(password)
+                allow = self.password == sha.hexdigest()
+        return allow

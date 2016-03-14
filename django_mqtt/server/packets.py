@@ -27,7 +27,7 @@ class MQTTException(Exception):
 
 
 class MQTTProtocolException(MQTTException):
-    def get_nack(self, sp=False):
+    def get_nack(self):
         if self.errno in [mqtt.CONNACK_REFUSED_NOT_AUTHORIZED,
                           mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED,
                           mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED,
@@ -36,7 +36,6 @@ class MQTTProtocolException(MQTTException):
                           mqtt.CONNACK_REFUSED_PROTOCOL_VERSION]:
             conn_ack = ConnAck()
             conn_ack.ret_code = self.errno
-            conn_ack.set_flags(sp)
             return conn_ack
 
 
@@ -182,12 +181,12 @@ class BaseMQTT(object):
         if self.remaining_length_fixed is not None:
             remain = len(self.get_payload()) + len(self.get_variable_header())
             if remain != self.remaining_length_fixed:
-                raise MQTTProtocolException('Integrity error')
+                raise MQTTException('Integrity error')
         if self.ctl in MQTTFlagsTable:
             reserved_flags_fixed = MQTTFlagsTable[self.ctl]
             if reserved_flags_fixed is not None:
                 if self.flags != reserved_flags_fixed:
-                    raise MQTTProtocolException('Reserved flags should be %s' % hex(reserved_flags_fixed))
+                    raise MQTTException('Reserved flags should be %s' % hex(reserved_flags_fixed))
 
 
 class MQTTEmpty(BaseMQTT):
@@ -204,7 +203,7 @@ class MQTTEmpty(BaseMQTT):
 
     def parse_body(self, body):
         if not body:
-            raise MQTTProtocolException('Body must be empty')
+            raise MQTTException('Body must be empty')
 
 
 class MQTTOnlyPackID(MQTTEmpty):
@@ -219,8 +218,8 @@ class MQTTOnlyPackID(MQTTEmpty):
 
 class Connect(BaseMQTT):
 
-    def __init__(self, clientId=None, qos=None, keep_alive=0x0f, proto_level=0x04,
-                 topic="", msg="", auth_name=None, auth_password=None):
+    def __init__(self, client_id=None, qos=None, keep_alive=0x0f, proto_level=0x04,
+                 topic=None, msg=None, auth_name=None, auth_password=None):
         """
             :type clientId: str
             :param clientId: from 1 to 23 chars only 0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
@@ -245,11 +244,11 @@ class Connect(BaseMQTT):
         self.proto_level = proto_level
         self.conn_flags = 0x00
         self.keep_alive = keep_alive
-        self.clientId = clientId
+        self.client_id = client_id
         self._topic = topic
         self._msg = msg
         flags = {}
-        if self._msg or self._topic:
+        if self._msg is not None or self._topic is not None:
             flags['retain'] = True
         flags['qos'] = qos
         flags['name'] = auth_name
@@ -262,15 +261,14 @@ class Connect(BaseMQTT):
         return self._msg
 
     def set_msg(self, msg):
-        try:
-            gen_string(msg, exception=True)
-        except:
-            msg = ""
-        if msg or self.topic:
-            self.set_flags(retain=True)
-        else:
-            self.set_flags(retain=False)
         self._msg = msg
+        if msg is None:
+            self.set_flags(retain=False)
+        else:
+            if self.topic is None:
+                self.set_flags(retain=False)
+            else:
+                self.set_flags(retain=True)
 
     msg = property(get_msg, set_msg)
 
@@ -278,14 +276,19 @@ class Connect(BaseMQTT):
         return self._topic
 
     def set_topic(self, topic):
-        try:
-            gen_string(topic, exception=True)
-        except Exception:
-            topic = ""
-        if topic or self.msg:
-            self.set_flags(retain=True)
-        else:
+        self._topic = topic
+        if topic is None:
             self.set_flags(retain=False)
+        else:
+            try:
+                self._topic = gen_string(topic, exception=True)
+            except Exception as ex:
+                logging.warn('topic contains not valid format %s' % (ex, ))
+                self._topic = gen_string(topic)
+            if self.msg is None:
+                self.set_flags(retain=False)
+            else:
+                self.set_flags(retain=True)
         self._topic = topic
 
     topic = property(get_topic, set_topic)
@@ -343,7 +346,7 @@ class Connect(BaseMQTT):
         self.conn_flags |= (self._QoS << 3)
 
     def get_payload(self, ignore_flags=False):
-        payload = gen_string(self.clientId)
+        payload = gen_string(self.client_id)
         if ignore_flags or self.has_retain():
             payload += gen_string(self.topic)
             payload += gen_string(self.msg)
@@ -366,7 +369,7 @@ class Connect(BaseMQTT):
         self.proto_level, self.conn_flags, self.keep_alive = struct.unpack_from("!BBH", body, 0)
         padding = 4
         if not self.is_clean():
-            self.clientId = get_string(body[padding:])
+            self.client_id = get_string(body[padding:])
             (size, ) = struct.unpack_from("!H", body, padding)
             padding += 2 + size
         if self.has_retain():
@@ -385,30 +388,43 @@ class Connect(BaseMQTT):
             (size, ) = struct.unpack_from("!H", body, padding)
             padding += 2 + size
         if len(body) > padding:
-            raise MQTTProtocolException('Body too big')
+            raise MQTTException('Body too big')
 
     def check_integrity(self):
         super(Connect, self).check_integrity()
         if self.proto_name != gen_string("MQTT"):
             raise MQTTException('Protocol not valid')
         if not self.is_clean():
-            if not self.clientId:
-                raise MQTTProtocolException("ClientIds must be between 1 and 23",
-                                          errno=mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED)
-            size_clientId = len(self.clientId)
-            if size_clientId > 23 or size_clientId < 1:
-                raise MQTTProtocolException("ClientIds must be between 1 and 23",
-                                          errno=mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED)
-            match = MQTT_CLIENT_ID_RE.match(self.clientId)
-            if match is None:
-                raise MQTTProtocolException("ClientIds must be charters " + MQTT_CLIENT_ID_RE.pattern,
-                                          errno=mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED)
-        if self.has_name() and not self.auth_name:
-            raise MQTTException('UserName required according flags')
+            if self.client_id is None:
+                raise MQTTProtocolException("Client Id must be between 1 and 23",
+                                            errno=mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED)
+            size_client_id = len(self.client_id)
+            if size_client_id > 0:
+                if size_client_id > 23 or size_client_id < 1:
+                    raise MQTTProtocolException("Client Id must be between 1 and 23",
+                                                errno=mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED)
+                match = MQTT_CLIENT_ID_RE.match(self.client_id)
+                if match is None:
+                    raise MQTTProtocolException("Client Id must be charters " + MQTT_CLIENT_ID_RE.pattern,
+                                                errno=mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED)
+        if self.has_retain():
+            if self.topic is None:
+                raise MQTTException("Topic required according flags")
+            elif MQTT_NONE_CHAR in self.topic:
+                raise MQTTException("Charter 0x0000 not allowed")
+            if self.msg is None:
+                raise MQTTException("Message required according flags")
+        if self.has_name():
+            if not self.auth_name:
+                raise MQTTException('UserName required according flags')
+            if MQTT_NONE_CHAR in self.auth_name:
+                raise MQTTException("Charter 0x0000 not allowed")
         if self.has_password() and not self.auth_password:
             raise MQTTException('Password required according flags')
         if self.proto_level not in [mqtt.MQTTv31, mqtt.MQTTv311]:
             raise MQTTException('Protocol level not valid')
+        if self.QoS == 0x03:
+            raise MQTTException('Protocol QoS not valid')
 
 
 class ConnAck(BaseMQTT):
@@ -439,7 +455,7 @@ class ConnAck(BaseMQTT):
         if self.ret_code not in [mqtt.CONNACK_ACCEPTED, mqtt.CONNACK_REFUSED_SERVER_UNAVAILABLE,
                                  mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED, mqtt.CONNACK_REFUSED_PROTOCOL_VERSION,
                                  mqtt.CONNACK_REFUSED_NOT_AUTHORIZED, mqtt.CONNACK_REFUSED_BAD_USERNAME_PASSWORD]:
-            raise MQTTProtocolException('ConnAck Code error %s not valid' % self.ret_code)
+            raise MQTTException('ConnAck Code error %s not valid' % self.ret_code)
         if self.ret_code:
             raise MQTTProtocolException('ConnAck Error', errno=self.ret_code)
 
@@ -488,13 +504,13 @@ class Publish(BaseMQTT):
         (size, ) = struct.unpack_from("!H", body, padding)
         padding += 2 + size
         if len(body) > padding:
-            raise MQTTProtocolException('Body too big')
+            raise MQTTException('Body too big')
 
     def check_integrity(self):
         if self.QoS == MQTT_QoS0 and self.pack_identifier:
-            raise MQTTProtocolException('Publish with QoS 0 should not have pack identifier')
+            raise MQTTException('Publish with QoS 0 should not have pack identifier')
         elif not self.pack_identifier:
-            raise MQTTProtocolException('Publish should have pack identifier')
+            raise MQTTException('Publish should have pack identifier')
         super(Publish, self).check_integrity()
 
 
@@ -527,9 +543,9 @@ class PubComp(MQTTOnlyPackID):
         self._QoS = MQTT_QoS2
 
 
-class Subcribe(BaseMQTT):
+class Subscribe(BaseMQTT):
     def __init__(self):
-        super(Subcribe, self).__init__(mqtt.SUBSCRIBE)
+        super(Subscribe, self).__init__(mqtt.SUBSCRIBE)
         self.topic_list = {}
 
     def add_topic(self, topic, qos):
@@ -557,7 +573,13 @@ class Subcribe(BaseMQTT):
             padding += 1
             self.add_topic(topic, qos)
         if len(body) > padding:
-            raise MQTTProtocolException('Body too big')
+            raise MQTTException('Body too big is %s but expered %s' % (padding, len(body)))
+
+    def check_integrity(self):
+        for qos in set(self.topic_list.values()):
+            if (qos & int('11111100', 2)) == 0:
+                raise MQTTException('QoS reserved flags malformed value %s' % (qos, ))
+        super(Subscribe, self).check_integrity()
 
 
 class SubAck(BaseMQTT):
@@ -588,14 +610,14 @@ class SubAck(BaseMQTT):
             padding += 1
             self.add_response(response_code)
         if len(body) > padding:
-            raise MQTTProtocolException('Body too big')
+            raise MQTTException('Body too big')
 
 
-class Unsubcribe(BaseMQTT):
+class Unsubscribe(BaseMQTT):
     reserved_flags_fixed = int('0010', 2)
 
     def __init__(self):
-        super(Unsubcribe, self).__init__(mqtt.UNSUBSCRIBE)
+        super(Unsubscribe, self).__init__(mqtt.UNSUBSCRIBE)
         self.topic_list = []
 
     def add_topic(self, topic):
@@ -620,7 +642,7 @@ class Unsubcribe(BaseMQTT):
             padding += 2 + size
             self.add_topic(topic)
         if len(body) > padding:
-            raise MQTTProtocolException('Body too big')
+            raise MQTTException('Body too big')
 
 
 class UnsubAck(MQTTOnlyPackID):
@@ -639,8 +661,6 @@ class PingResp(MQTTEmpty):
 
 
 class Disconnect(MQTTEmpty):
-    reserved_flags_fixed = int('0000', 2)
-
     def __init__(self):
         super(Disconnect, self).__init__(mqtt.DISCONNECT)
 
@@ -653,9 +673,9 @@ MQTTClassTable = {
     mqtt.PUBREC: PubRec,
     mqtt.PUBREL: PubRel,
     mqtt.PUBCOMP: PubComp,
-    mqtt.SUBSCRIBE: Subcribe,
+    mqtt.SUBSCRIBE: Subscribe,
     mqtt.SUBACK: SubAck,
-    mqtt.UNSUBSCRIBE: Unsubcribe,
+    mqtt.UNSUBSCRIBE: Unsubscribe,
     mqtt.UNSUBACK: UnsubAck,
     mqtt.PINGREQ: PingReq,
     mqtt.PINGRESP: PingResp,
@@ -664,7 +684,6 @@ MQTTClassTable = {
 
 
 def parse_raw(connection):
-    cls = None
     try:
         header = connection.recv(1)
         ctrl = (header & 0xf0) >> 4
@@ -681,17 +700,16 @@ def parse_raw(connection):
         body = connection.recv(remain)
 
         if ctrl not in MQTTClassTable:
-            raise MQTTProtocolException('%s not control type supported' % ctrl)
+            raise MQTTException('%s not control type supported' % ctrl)
         cls = MQTTClassTable[ctrl]()
         cls.flags = flags
         cls.parse_body(body)
+        return cls
     except struct.error as s_ex:
-        logging.exception(s_ex)
-        raise MQTTProtocolException(exception=s_ex)
+        raise MQTTException(exception=s_ex)
     except UnicodeDecodeError as u_ex:
-        logging.exception(u_ex)
-        raise MQTTProtocolException(exception=u_ex)
+        raise MQTTException(exception=u_ex)
     except ValueError as v_ex:
-        logging.exception(v_ex)
-        raise MQTTProtocolException(exception=v_ex)
-    return cls
+        raise MQTTException(exception=v_ex)
+    except TypeError as t_ex:
+        raise MQTTException(exception=t_ex)

@@ -73,6 +73,9 @@ class Command(BaseCommand):
             if clients.count() == 1:
                 id = clients.all()[0].pk
             else:
+                if clients.all().count() == 0:
+                    self.stderr("No client on DB")
+                    return 1
                 print 'id -> client'
                 for obj in clients.all():
                     print obj.pk, '->', obj

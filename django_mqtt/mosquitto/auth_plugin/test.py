@@ -1,5 +1,5 @@
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth.models import User, Group
 from django.test import TestCase, Client
 from django.core.urlresolvers import reverse
 from django.conf import settings
@@ -9,7 +9,6 @@ from django_mqtt import models
 
 class AuthTestCase(TestCase):
     def setUp(self):
-        User = get_user_model()
         User.objects.create_user('test', 'test@test.com', 'test')
         User.objects.create_superuser('admin', 'admin@test.com', 'admin')
         self.url_testing = reverse('mqtt_auth')
@@ -40,7 +39,6 @@ class AuthTestCase(TestCase):
 
 class AdminTestCase(TestCase):
     def setUp(self):
-        User = get_user_model()
         User.objects.create_user('test', 'test@test.com', 'test')
         User.objects.create_superuser('admin', 'admin@test.com', 'admin')
         self.url_testing = reverse('mqtt_superuser')
@@ -61,9 +59,10 @@ class AdminTestCase(TestCase):
 
 class AclTestCase(TestCase):
     def setUp(self):
-        User = get_user_model()
-        User.objects.create_user('test', 'test@test.com', 'test')
-        user_login = User.objects.get(username='test')
+        user_login = User.objects.create_user('test', 'test@test.com', 'test')
+        user_group = User.objects.create_user('test_group', 'test_group@test.com', 'test_group')
+        group = Group.objects.create(name='MQTT')
+        user_group.groups.add(group)
         User.objects.create_superuser('admin', 'admin@test.com', 'admin')
         self.topic_public_publish, is_new = models.Topic.objects.get_or_create(name='/test/publisher/allow')
         self.topic_forbidden_publish, is_new = models.Topic.objects.get_or_create(name='/test/publisher/disallow')
@@ -77,26 +76,34 @@ class AclTestCase(TestCase):
         models.ACL.objects.create(
             allow=False, topic=self.topic_forbidden_publish,
             acc=models.PROTO_MQTT_ACC_PUB)
-        models.ACL.objects.create(
-            allow=True, topic=self.topic_private_publish,
-            acc=models.PROTO_MQTT_ACC_PUB).users.add(user_login)
+        acl = models.ACL.objects.create(
+                allow=True, topic=self.topic_private_publish,
+                acc=models.PROTO_MQTT_ACC_PUB)
+        acl.groups.add(group)
+        acl.users.add(user_login)
         models.ACL.objects.create(
             allow=True, topic=self.topic_public_subs,
             acc=models.PROTO_MQTT_ACC_SUS)
         models.ACL.objects.create(
             allow=False, topic=self.topic_forbidden_subs,
             acc=models.PROTO_MQTT_ACC_SUS)
-        models.ACL.objects.create(
+        acl = models.ACL.objects.create(
             allow=True, topic=self.topic_private_subs,
-            acc=models.PROTO_MQTT_ACC_SUS).users.add(user_login)
+            acc=models.PROTO_MQTT_ACC_SUS)
+        acl.groups.add(group)
+        acl.users.add(user_login)
         self.url_testing = reverse('mqtt_acl')
         self.client = Client()
 
     def test_no_topic(self):
+        no_exist = models.Topic.objects.filter(name='/no/exist/topic').count()
+        self.assertEqual(no_exist, 0)
         response = self.client.post(self.url_testing,
                                     {'username': 'test',
                                      'acc': models.PROTO_MQTT_ACC_PUB,
                                      'topic': '/no/exist/topic'})
+        no_exist = models.Topic.objects.filter(name='/no/exist/topic').count()
+        self.assertEqual(no_exist, 1)
         allow = 200
         if hasattr(settings, 'MQTT_ACL_ALLOW'):
             if not settings.MQTT_ACL_ALLOW:
@@ -172,6 +179,11 @@ class AclTestCase(TestCase):
                                      'topic': self.topic_private_publish})
         self.assertEqual(response.status_code, 200)
         response = self.client.post(self.url_testing,
+                                    {'username': 'test_group',
+                                     'acc': models.PROTO_MQTT_ACC_PUB,
+                                     'topic': self.topic_private_publish})
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post(self.url_testing,
                                     {'username': 'admin',
                                      'acc': models.PROTO_MQTT_ACC_PUB,
                                      'topic': self.topic_private_publish})
@@ -185,6 +197,11 @@ class AclTestCase(TestCase):
     def test_public_subscriber(self):
         response = self.client.post(self.url_testing,
                                     {'username': 'test',
+                                     'acc': models.PROTO_MQTT_ACC_SUS,
+                                     'topic': self.topic_public_subs})
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post(self.url_testing,
+                                    {'username': 'test_group',
                                      'acc': models.PROTO_MQTT_ACC_SUS,
                                      'topic': self.topic_public_subs})
         self.assertEqual(response.status_code, 200)

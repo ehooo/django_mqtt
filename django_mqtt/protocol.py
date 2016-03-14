@@ -1,5 +1,7 @@
 import paho.mqtt.client as mqtt
+import random
 import struct
+import six
 import re
 
 
@@ -22,7 +24,9 @@ MQTTTypes = [
     15
 ]
 
-MQTT_CLIENT_ID_RE = re.compile('[0-9a-zA-Z]{1,23}')
+MQTT_CLIENT_ID_RE = re.compile('(?P<client>[0-9a-zA-Z]{1,23})')
+MQTT_TOPIC_RE = re.compile('(?P<topic>(/(?=[^/]))?(?P<path>(?P<dir_name>[^+#/]+|\+)/)*(?P<end>#|\+|[^+#/]+))(?!.)',
+                           flags=re.DOTALL)
 
 MQTT_QoS0 = int('00', 2)
 MQTT_QoS1 = int('01', 2)
@@ -69,7 +73,7 @@ TOPIC_SEP = '/'
 TOPIC_BEGINNING_DOLLAR = '$'
 WILDCARD_SINGLE_LEVEL = '+'
 WILDCARD_MULTI_LEVEL = '#'
-
+MQTT_NONE_CHAR = '\x00\x00'
 
 def remaining2list(remain, exception=False):
     bytes_remain = []
@@ -155,7 +159,12 @@ def get_string(buff, exception=False):
         fmt = "!"+("B"*str_size)
         utf8_str = struct.unpack_from(fmt, buff, struct.calcsize("!H"))
         byte_str = map(chr, utf8_str)
-        return ''.join(byte_str).decode('utf8')
+        utf8_str = ''.join(byte_str).decode('utf8')
+        if MQTT_NONE_CHAR in utf8_str:
+            if exception:
+                raise ValueError('char 0x0000 not allowed')
+            utf8_str = utf8_str.replace(MQTT_NONE_CHAR, '')
+        return utf8_str
     except UnicodeEncodeError as er:
         if exception:
             raise er
@@ -187,3 +196,11 @@ def gen_string(uni_str, exception=False):
         if exception:
             raise er
     return ''
+
+
+def gen_client_id():
+    rand = random.SystemRandom()
+    client_id = ''
+    for s in six.range(rand.randint(1, 23)):
+        client_id += rand.choice('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    return id

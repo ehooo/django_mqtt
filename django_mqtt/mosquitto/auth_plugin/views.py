@@ -77,23 +77,17 @@ class Acl(View):
 
         acl = None
         if not new_topic:
-            acl_ = ACL.objects.filter(acc=acc, topic=topic)  # ACL only count have one or none
-            if acl_.count() > 0:
-                acl = acl_[0]
+            try:
+                acl = ACL.objects.get(acc=acc, topic=topic)  # ACL only count have one or none
+            except ACL.DoesNotExist:
+                pass
 
         if acl is None:
             allow = ACL.get_default(acc=acc, user=user)
             # TODO search best candidate
 
         if acl:
-            if acl.is_public():
-                allow = acl.allow
-            elif user and acl.users.filter(pk=user.pk).count() > 0:
-                allow = acl.allow
-            elif user and acl.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
-                allow = acl.allow
-            else:
-                allow = not acl.allow
+            allow = acl.has_permission(user=user)
 
         if allow and hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
             if user is None:
