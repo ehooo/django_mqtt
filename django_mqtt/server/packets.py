@@ -547,16 +547,20 @@ class Subscribe(BaseMQTT):
     def __init__(self):
         super(Subscribe, self).__init__(mqtt.SUBSCRIBE)
         self.topic_list = {}
+        self.topic_order = []
 
     def add_topic(self, topic, qos):
         self.topic_list[topic] = (qos & int('11', 2))
+        if topic in self.topic_order:
+            self.topic_order.remove(topic)
+        self.topic_order.append(topic)
 
     def get_variable_header(self):
         return struct.pack("!H", self.pack_identifier)
 
     def get_payload(self):
         msg = ''
-        for topic in self.topic_list:
+        for topic in self.topic_order:
             msg += gen_string(topic)
             msg += struct.pack("!B", self.topic_list[topic])
         return msg
