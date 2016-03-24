@@ -74,24 +74,26 @@ class Command(BaseCommand):
                 id = clients.all()[0].pk
             else:
                 if clients.all().count() == 0:
-                    self.stderr("No client on DB")
-                    return 1
+                    raise CommandError(unicode(_('No client on DB')))
                 print 'id -> client'
                 for obj in clients.all():
                     print obj.pk, '->', obj
                 id = input("Select id from DB: ")
-        obj = Client.objects.get(pk=id)
-        cli = obj.get_mqtt_client()
+        try:
+            obj = Client.objects.get(pk=id)
+            cli = obj.get_mqtt_client()
 
-        cli.on_connect = on_connect
-        cli.on_disconnect = on_disconnect
-        cli.on_publish = on_publish
-        cli.on_subscribe = on_subscribe
-        cli.on_unsubscribe = on_unsubscribe
-        cli.on_message = on_message
-        cli.on_log = on_log
-        cli.connect(obj.server.host, obj.server.port, obj.keepalive)
-        cli.subscribe(options['topic'], options['qos'])
-        cli.loop_forever()
-        cli.disconnect()
+            cli.on_connect = on_connect
+            cli.on_disconnect = on_disconnect
+            cli.on_publish = on_publish
+            cli.on_subscribe = on_subscribe
+            cli.on_unsubscribe = on_unsubscribe
+            cli.on_message = on_message
+            cli.on_log = on_log
+            cli.connect(obj.server.host, obj.server.port, obj.keepalive)
+            cli.subscribe(options['topic'], options['qos'])
+            cli.loop_forever()
+            cli.disconnect()
+        except Client.DoesNotExist:
+            raise CommandError(unicode(_('Client not exist')))
 

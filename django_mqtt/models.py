@@ -5,6 +5,7 @@ import six
 
 from django_mqtt.validators import *
 from django.contrib.auth.models import User, Group
+from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
 from django.db.models import Q
 from django.db import models
@@ -17,8 +18,8 @@ from django_mqtt.protocol import TOPIC_SEP, TOPIC_BEGINNING_DOLLAR
 PROTO_MQTT_ACC_SUS = 1
 PROTO_MQTT_ACC_PUB = 2
 PROTO_MQTT_ACC = (
-    (PROTO_MQTT_ACC_SUS, 'Suscriptor'),
-    (PROTO_MQTT_ACC_PUB, 'Publisher'),
+    (PROTO_MQTT_ACC_SUS, _('Suscriptor')),
+    (PROTO_MQTT_ACC_PUB, _('Publisher')),
 )
 
 ALLOW_EMPTY_CLIENT_ID = False
@@ -29,8 +30,8 @@ if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID'):
 class ClientId(models.Model):
     name = models.CharField(max_length=23, db_index=True, blank=True,
                             validators=[ClientIdValidator(valid_empty=ALLOW_EMPTY_CLIENT_ID)])
-    users = models.ManyToManyField(User, blank=True, null=True)
-    groups = models.ManyToManyField(Group, blank=True, null=True)
+    users = models.ManyToManyField(User, blank=True)
+    groups = models.ManyToManyField(Group, blank=True)
 
     def is_public(self):
         return self.users.count() == 0 and self.groups.count() == 0
@@ -59,7 +60,7 @@ class ClientId(models.Model):
 
 
 class Topic(models.Model):
-    name = models.CharField(max_length=1024, validators=[TopicValidator()], db_index=True, unique=True)
+    name = models.CharField(max_length=1024, validators=[TopicValidator()], db_index=True, unique=True, blank=True)
     wildcard = models.BooleanField(default=False)
     dollar = models.BooleanField(default=False)
 
@@ -74,6 +75,20 @@ class Topic(models.Model):
             return self.name == other.name
         elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
             return self.name == other
+        return False
+
+    def __lt__(self, other):
+        if isinstance(other, Topic):
+            return self in other
+        elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
+            return self in Topic(other)
+        return False
+
+    def __gt__(self, other):
+        if isinstance(other, Topic):
+            return other in self
+        elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
+            return Topic(other) in self
         return False
 
     def is_wildcard(self):
@@ -167,8 +182,8 @@ class ACL(models.Model):
     allow = models.BooleanField(default=True)
     topic = models.ForeignKey(Topic)  # There is many of acc options by topic
     acc = models.IntegerField(choices=PROTO_MQTT_ACC)
-    users = models.ManyToManyField(User, blank=True, null=True)
-    groups = models.ManyToManyField(Group, blank=True, null=True)
+    users = models.ManyToManyField(User, blank=True)
+    groups = models.ManyToManyField(Group, blank=True)
     password = models.CharField(max_length=512, blank=True, null=True,
                                 help_text='Only valid for connect')
     only_username = models.NullBooleanField(default=None)
@@ -201,9 +216,17 @@ class ACL(models.Model):
             pass
         return allow
 
-    def set_pasword(self, new_password):
-        sha = hashlib.sha512(new_password)
-        self.password = sha.hexdigest()
+    @classmethod
+    def get_acl(cls, topic, acc=PROTO_MQTT_ACC_PUB):
+        candidates = []
+        try:
+            candidates = [ACL.objects.get(topic=topic, acc=acc)]
+        except ACL.DoesNotExist:
+            for candidate in cls.objects.filter(topic__wildcard=True,
+                                                acc=acc).values_list('topic'):
+                if topic in candidate:
+                    candidates.append(candidate)
+        return min(candidates)
 
     def is_public(self):
         return self.users.count() == 0 and self.groups.count() == 0 and self.password is None
@@ -219,6 +242,11 @@ class ACL(models.Model):
                 else:
                     allow = not self.allow
             if self.password and password:
-                sha = hashlib.sha512(password)
-                allow = self.password == sha.hexdigest()
+                allow = self.password == password
         return allow
+
+    def __unicode__(self):
+        return "ACL %s for %s" % (dict(PROTO_MQTT_ACC)[self.acc], self.topic)
+
+    def __str__(self):
+        return "ACL %s for %s" % (dict(PROTO_MQTT_ACC)[self.acc], self.topic)

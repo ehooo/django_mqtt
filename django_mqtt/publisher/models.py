@@ -1,6 +1,7 @@
 import ssl
 import socket
 
+from django.utils.translation import ugettext_lazy as _
 from django.core.files.storage import FileSystemStorage
 from django.conf import settings
 from django.db import models
@@ -36,9 +37,9 @@ PROTO_MQTT_CONN_ERROR_DOWN = 212
 PROTO_MQTT_CONN_ERROR_UNREACHABLE = 213
 
 CERT_REQS = (
-    (ssl.CERT_REQUIRED, 'Required'),
-    (ssl.CERT_OPTIONAL, 'Optional'),
-    (ssl.CERT_NONE, 'None'),
+    (ssl.CERT_REQUIRED, _('Required')),
+    (ssl.CERT_OPTIONAL, _('Optional')),
+    (ssl.CERT_NONE, _('None')),
 )
 PROTO_SSL_VERSION = (
     (ssl.PROTOCOL_TLSv1, 'v1'),
@@ -57,36 +58,36 @@ PROTO_MQTT_VERSION = (
     (mqtt.MQTTv311, 'v3.1.1'),
 )
 PROTO_MQTT_QoS = (
-    (MQTT_QoS0, 'QoS 0: Delivered at most once'),
-    (MQTT_QoS1, 'QoS 1: Always delivered at least once'),
-    (MQTT_QoS2, 'QoS 2: Always delivered exactly once'),
+    (MQTT_QoS0, _('QoS 0: Delivered at most once')),
+    (MQTT_QoS1, _('QoS 1: Always delivered at least once')),
+    (MQTT_QoS2, _('QoS 2: Always delivered exactly once')),
 )
 PROTO_MQTT_CONN_STATUS = (
-    (PROTO_MQTT_CONN_OK, 'Connection successful'),
-    (PROTO_MQTT_CONN_ERROR_PROTO_VERSION, 'Connection refused - incorrect protocol version'),
-    (PROTO_MQTT_CONN_ERROR_INVALID_CLIENT, 'Connection refused - invalid client identifier'),
-    (PROTO_MQTT_CONN_ERROR_UNAVAILABLE, 'Connection refused - server unavailable'),
-    (PROTO_MQTT_CONN_ERROR_BAD_USER, 'Connection refused - bad username or password'),
-    (PROTO_MQTT_CONN_ERROR_NOT_AUTH, 'Connection refused - not authorised'),
-    (PROTO_MQTT_CONN_ERROR_UNKNOWN, 'Unknown'),
+    (PROTO_MQTT_CONN_OK, _('Connection successful')),
+    (PROTO_MQTT_CONN_ERROR_PROTO_VERSION, _('Connection refused - incorrect protocol version')),
+    (PROTO_MQTT_CONN_ERROR_INVALID_CLIENT, _('Connection refused - invalid client identifier')),
+    (PROTO_MQTT_CONN_ERROR_UNAVAILABLE, _('Connection refused - server unavailable')),
+    (PROTO_MQTT_CONN_ERROR_BAD_USER, _('Connection refused - bad username or password')),
+    (PROTO_MQTT_CONN_ERROR_NOT_AUTH, _('Connection refused - not authorised')),
+    (PROTO_MQTT_CONN_ERROR_UNKNOWN, _('Unknown')),
 
-    (PROTO_MQTT_CONN_ERROR_GENERIC, 'Connection error'),
-    (PROTO_MQTT_CONN_ERROR_ADDR_FAILED, 'Connection error - Get address info failed'),
+    (PROTO_MQTT_CONN_ERROR_GENERIC, _('Connection error')),
+    (PROTO_MQTT_CONN_ERROR_ADDR_FAILED, _('Connection error - Get address info failed')),
 
-    (PROTO_MQTT_CONN_ERROR_INTERRUPTED, 'Connection error - The operation was interrupted'),
-    (PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED, 'Connection error - Permission denied'),
-    (PROTO_MQTT_CONN_ERROR_FAULT_NETWORK, 'Connection error - A fault occurred on the network'),
-    (PROTO_MQTT_CONN_ERROR_INVALID, 'Connection error - An invalid operation was attempted'),
-    (PROTO_MQTT_CONN_ERROR_BLOCK, 'Connection error - The socket operation would block'),
-    (PROTO_MQTT_CONN_ERROR_BLOCKING, 'Connection error - A blocking operation is already in progress'),
-    (PROTO_MQTT_CONN_ERROR_IN_USE, 'Connection error - The network address is in use'),
-    (PROTO_MQTT_CONN_ERROR_RESET, 'Connection error - The connection has been reset'),
-    (PROTO_MQTT_CONN_ERROR_SHUTDOWN, 'Connection error - The network has been shut down'),
-    (PROTO_MQTT_CONN_ERROR_TIMEOUT, 'Connection error - The operation timed out'),
-    (PROTO_MQTT_CONN_ERROR_REFUSED, 'Connection error - Connection refused'),
-    (PROTO_MQTT_CONN_ERROR_TOO_LONG, 'Connection error - The name is too long'),
-    (PROTO_MQTT_CONN_ERROR_DOWN, 'Connection error - The host is down'),
-    (PROTO_MQTT_CONN_ERROR_UNREACHABLE, 'Connection error - The host is unreachable'),
+    (PROTO_MQTT_CONN_ERROR_INTERRUPTED, _('Connection error - The operation was interrupted')),
+    (PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED, _('Connection error - Permission denied')),
+    (PROTO_MQTT_CONN_ERROR_FAULT_NETWORK, _('Connection error - A fault occurred on the network')),
+    (PROTO_MQTT_CONN_ERROR_INVALID, _('Connection error - An invalid operation was attempted')),
+    (PROTO_MQTT_CONN_ERROR_BLOCK, _('Connection error - The socket operation would block')),
+    (PROTO_MQTT_CONN_ERROR_BLOCKING, _('Connection error - A blocking operation is already in progress')),
+    (PROTO_MQTT_CONN_ERROR_IN_USE, _('Connection error - The network address is in use')),
+    (PROTO_MQTT_CONN_ERROR_RESET, _('Connection error - The connection has been reset')),
+    (PROTO_MQTT_CONN_ERROR_SHUTDOWN, _('Connection error - The network has been shut down')),
+    (PROTO_MQTT_CONN_ERROR_TIMEOUT, _('Connection error - The operation timed out')),
+    (PROTO_MQTT_CONN_ERROR_REFUSED, _('Connection error - Connection refused')),
+    (PROTO_MQTT_CONN_ERROR_TOO_LONG, _('Connection error - The name is too long')),
+    (PROTO_MQTT_CONN_ERROR_DOWN, _('Connection error - The host is down')),
+    (PROTO_MQTT_CONN_ERROR_UNREACHABLE, _('Connection error - The host is unreachable')),
 )
 
 
