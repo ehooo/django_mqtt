@@ -1,0 +1,103 @@
+[
+  {
+    "model": "django_mqtt.clientid",
+    "pk": 1,
+    "fields": {
+      "name": "1234",
+      "users": [],
+      "groups": []
+    }
+  },
+  {
+    "model": "django_mqtt.topic",
+    "pk": 1,
+    "fields": {
+      "name": "#",
+      "wildcard": true,
+      "dollar": false
+    }
+  },
+  {
+    "model": "django_mqtt.topic",
+    "pk": 2,
+    "fields": {
+      "name": "$SYS/#",
+      "wildcard": true,
+      "dollar": false
+    }
+  },
+  {
+    "model": "django_mqtt.acl",
+    "pk": 1,
+    "fields": {
+      "allow": true,
+      "topic": 1,
+      "acc": 1,
+      "password": "",
+      "only_username": null,
+      "users": [],
+      "groups": []
+    }
+  },
+  {
+    "model": "django_mqtt.acl",
+    "pk": 2,
+    "fields": {
+      "allow": false,
+      "topic": 1,
+      "acc": 2,
+      "password": "",
+      "only_username": null,
+      "users": [],
+      "groups": []
+    }
+  },
+  {
+    "model": "django_mqtt.acl",
+    "pk": 3,
+    "fields": {
+      "allow": true,
+      "topic": 2,
+      "acc": 1,
+      "password": "",
+      "only_username": null,
+      "users": [],
+      "groups": []
+    }
+  },
+  {
+    "model": "django_mqtt.acl",
+    "pk": 4,
+    "fields": {
+      "allow": false,
+      "topic": 2,
+      "acc": 2,
+      "password": "",
+      "only_username": null,
+      "users": [],
+      "groups": []
+    }
+  },
+  {
+    "model": "publisher.server",
+    "pk": 1,
+    "fields": {
+      "host": "127.0.0.1",
+      "port": 1883,
+      "secure": null,
+      "protocol": 4,
+      "status": 6
+    }
+  },
+  {
+    "model": "publisher.client",
+    "pk": 1,
+    "fields": {
+      "server": 1,
+      "auth": null,
+      "client_id": 1,
+      "keepalive": 60,
+      "clean_session": false
+    }
+  }
+]

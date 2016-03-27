@@ -200,7 +200,9 @@ class Client(models.Model):
         return "%s - %s" % (self.client_id, self.server)
 
     def get_mqtt_client(self, empty_client_id=False):
-        client_id = self.client_id
+        client_id = None
+        if self.client_id:
+            client_id = self.client_id.name
         if not self.clean_session and empty_client_id:
             client_id = None
         cli = mqtt.Client(client_id, self.clean_session, protocol=self.server.protocol)

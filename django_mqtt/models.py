@@ -226,10 +226,12 @@ class ACL(models.Model):
                                                 acc=acc).values_list('topic'):
                 if topic in candidate:
                     candidates.append(candidate)
+        if len(candidates) == 0:
+            return None
         return min(candidates)
 
     def is_public(self):
-        return self.users.count() == 0 and self.groups.count() == 0 and self.password is None
+        return self.users.count() == 0 and self.groups.count() == 0 and not self.password
 
     def has_permission(self, user=None, password=None):
         allow = False
@@ -237,7 +239,8 @@ class ACL(models.Model):
             allow = self.allow
         else:
             if user:
-                if user in self.users.all() or self.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
+                if user in self.users.all() or\
+                   self.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
                     allow = self.allow
                 else:
                     allow = not self.allow

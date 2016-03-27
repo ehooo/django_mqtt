@@ -6,6 +6,8 @@ from django.core.exceptions import ValidationError
 
 
 class TopicModelsTestCase(TestCase):
+    WRONG_TOPIC_SIMPLE_WILDCARD = ['a+', 'a+/', 'a/a+', 'a/+a']
+    WRONG_TOPIC_MULTI_WILDCARD = ['#/', 'a#', 'a#/', 'a/#a', 'a/a#']
 
     def test_topic_simple_wildcard(self):
         topic = Topic.objects.create(name='+')
@@ -27,10 +29,8 @@ class TopicModelsTestCase(TestCase):
         self.assertEqual('test/b/two/3' in topic, False)
 
     def test_wrong_topic_simple_wildcard(self):
-        self.assertRaises(ValidationError, Topic.objects.create, name='a+')
-        self.assertRaises(ValidationError, Topic.objects.create, name='a+/')
-        self.assertRaises(ValidationError, Topic.objects.create, name='a/a+')
-        self.assertRaises(ValidationError, Topic.objects.create, name='a/+a')
+        for topic in self.WRONG_TOPIC_SIMPLE_WILDCARD:
+            self.assertRaises(ValidationError, Topic.objects.create, name=topic)
 
     def test_topic_multi_wildcard(self):
         topic = Topic.objects.create(name='#')
@@ -55,11 +55,8 @@ class TopicModelsTestCase(TestCase):
         self.assertEqual('test/b/two/3' in topic, False)
 
     def test_wrong_topic_multi_wildcard(self):
-        self.assertRaises(ValidationError, Topic.objects.create, name='#/')
-        self.assertRaises(ValidationError, Topic.objects.create, name='a#')
-        self.assertRaises(ValidationError, Topic.objects.create, name='a#/')
-        self.assertRaises(ValidationError, Topic.objects.create, name='a/#a')
-        self.assertRaises(ValidationError, Topic.objects.create, name='a/a#')
+        for topic in self.WRONG_TOPIC_MULTI_WILDCARD:
+            self.assertRaises(ValidationError, Topic.objects.create, name=topic)
 
     def test_topic_wildcard(self):
         Topic.objects.create(name='/test/+/two/#')
@@ -105,6 +102,7 @@ class TopicModelsTestCase(TestCase):
 
 
 class ClientIdModelsTestCase(TestCase):
+    WRONG_CLIENT_ID_WILDCARD = ['012345678901234567890123456789', '/', '+', '#']
 
     def test_client_id(self):
         if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') and settings.MQTT_ALLOW_EMPTY_CLIENT_ID:
@@ -114,13 +112,49 @@ class ClientIdModelsTestCase(TestCase):
         ClientId.objects.create(name='test123')
 
     def test_wrong_client_id(self):
-        if not hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') or not settings.MQTT_ALLOW_EMPTY_CLIENT_ID:
+        if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') and settings.MQTT_ALLOW_EMPTY_CLIENT_ID:
             self.assertRaises(ValidationError, ClientId.objects.create, name='')
-        self.assertRaises(ValidationError, ClientId.objects.create, name='012345678901234567890123456789')
-        self.assertRaises(ValidationError, ClientId.objects.create, name='/')
-        self.assertRaises(ValidationError, ClientId.objects.create, name='+')
-        self.assertRaises(ValidationError, ClientId.objects.create, name='#')
+        for client_id in self.WRONG_CLIENT_ID_WILDCARD:
+            self.assertRaises(ValidationError, ClientId.objects.create, name=client_id)
 
+
+class ACLModelsTestCase(TestCase):
+    def setUp(self):
+        user_login = User.objects.create_user('test', 'test@test.com', 'test')
+        user_group = User.objects.create_user('test_group', 'test_group@test.com', 'test_group')
+        group = Group.objects.create(name='MQTT')
+        user_group.groups.add(group)
+        User.objects.create_superuser('admin', 'admin@test.com', 'admin')
+        self.topic_public_publish, is_new = Topic.objects.get_or_create(name='/test/publisher/allow')
+        self.topic_forbidden_publish, is_new = Topic.objects.get_or_create(name='/test/publisher/disallow')
+        self.topic_private_publish, is_new = Topic.objects.get_or_create(name='/test/subscriber/login')
+        self.topic_public_subs, is_new = Topic.objects.get_or_create(name='/test/subscriber/allow')
+        self.topic_forbidden_subs, is_new = Topic.objects.get_or_create(name='/test/subscriber/disallow')
+        self.topic_private_subs, is_new = Topic.objects.get_or_create(name='/test/subscriber/login')
+        ACL.objects.create(
+            allow=True, topic=self.topic_public_publish,
+            acc=PROTO_MQTT_ACC_PUB)
+        ACL.objects.create(
+            allow=False, topic=self.topic_forbidden_publish,
+            acc=PROTO_MQTT_ACC_PUB)
+        acl = ACL.objects.create(allow=True, topic=self.topic_private_publish,
+                                 acc=PROTO_MQTT_ACC_PUB)
+        acl.groups.add(group)
+        acl.users.add(user_login)
+        ACL.objects.create(
+            allow=True, topic=self.topic_public_subs,
+            acc=PROTO_MQTT_ACC_SUS)
+        ACL.objects.create(
+            allow=False, topic=self.topic_forbidden_subs,
+            acc=PROTO_MQTT_ACC_SUS)
+        acl = ACL.objects.create(
+            allow=True, topic=self.topic_private_subs,
+            acc=PROTO_MQTT_ACC_SUS)
+        acl.groups.add(group)
+        acl.users.add(user_login)
+
+    def test_wildcard_acl(self):
+        pass
 
 
 
