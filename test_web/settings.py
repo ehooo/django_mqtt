@@ -22,10 +22,7 @@ SECRET_KEY = '#b68qv#(v-g26k3qt_-1ufg-prvsw2p)7@ctea*n!36-w23bv1'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-TEMPLATE_DEBUG = True
-
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -37,8 +34,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
-    'django_mqtt.mosquitto.auth_plugin',
     'django_mqtt',
+    'django_mqtt.mosquitto.auth_plugin',
+    'django_mqtt.server',
+    'django_mqtt.publisher',
+]
+FIXTURE_DIRS = [
+    os.path.join(BASE_DIR, 'test_web')
 ]
 
 MIDDLEWARE_CLASSES = (
@@ -56,6 +58,7 @@ ROOT_URLCONF = 'test_web.urls'
 MQTT_CERTS_ROOT = os.path.join(BASE_DIR, 'private')
 MQTT_ACL_ALLOW = False
 MQTT_ACL_ALLOW_ANONIMOUS = MQTT_ACL_ALLOW
+MQTT_ALLOW_EMPTY_CLIENT_ID = False
 
 WSGI_APPLICATION = 'test_web.wsgi.application'
 

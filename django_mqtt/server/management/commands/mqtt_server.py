@@ -5,10 +5,10 @@ from django.utils.translation import ugettext_lazy as _
 from django.core.management.base import BaseCommand, CommandError
 from django.utils.encoding import force_text, get_system_encoding
 
+from django_mqtt.server.service import *
 from django_mqtt.server.packets import *
 
 from datetime import datetime
-from threading import Thread
 import socket
 import errno
 import ssl
@@ -22,20 +22,6 @@ naiveip_re = re.compile(r"""^(?:
     (?P<ipv6>\[[a-fA-F0-9:]+\]) |               # IPv6 address
     (?P<fqdn>[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*) # FQDN
 ):)?(?P<port>\d+)$""", re.X)
-
-
-def run_mqtt(connection):
-    try:
-        conn_pkg = parse_raw(connection)
-        if isinstance(conn_pkg, MQTTConnect):
-            raise MQTTProcolException
-        # Read connction
-        # Send/receive data
-    except MQTTProcolException as ex:
-        pass
-    finally:
-        connection.shutdown(socket.SHUT_RDWR)
-        connection.close()
 
 
 class Command(BaseCommand):
@@ -58,7 +44,7 @@ class Command(BaseCommand):
                             default=None, help='Required for SSL')
         parser.add_argument('--keyfile', action='store', dest='keyfile',
                             default=None, help='Required for SSL')
-        parser.add_argument('--backlog', action='store_int', dest='backlog',
+        parser.add_argument('--backlog', action='store', dest='backlog', type=int,
                             default=5, help='Maximum number of queued connections')
 
     def execute(self, *args, **options):
@@ -134,7 +120,7 @@ class Command(BaseCommand):
             "quit_command": quit_command,
         })
 
-        now = datetime.now().strftime('%B %d, %Y - %X')
+        now = datetime.utcnow().strftime('%B %d, %Y - %X')
         if six.PY2:
             now = now.decode(get_system_encoding())
         self.stdout.write(now)
@@ -172,14 +158,19 @@ class Command(BaseCommand):
         bind_socket.bind((addr, port))
         bind_socket.listen(backlog)
 
-        while self.is_running:
-            sock, from_addr = bind_socket.accept()
-            conn = sock
-            if context:
-                conn = context.wrap_socket(sock, server_side=True)
+        forks = []
+        try:
+            while self.is_running:
+                sock, from_addr = bind_socket.accept()
+                conn = sock
+                if context:
+                    conn = context.wrap_socket(sock, server_side=True)
 
-            if threading:
-                th = Thread(target=run_mqtt, args=(conn, ))
-                th.start()
-            else:
-                run_mqtt(conn)
+                th = MqttServiceThread(conn)
+                if threading:
+                    th.start()
+                    forks.append(th)
+                else:
+                    th.run()
+        finally:
+            pass
