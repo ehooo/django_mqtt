@@ -19,3 +19,5 @@ before_script:
 
 script:
   - python manage.py test
+  - coverage run --source='.' manage.py test
+  - coverage report -m --skip-covered

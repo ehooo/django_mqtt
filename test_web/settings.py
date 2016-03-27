@@ -72,7 +72,7 @@ if not os.environ.get('RUN_DB_SERVER', False):
             'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
         }
     }
-else:
+else:  # pragma: no cover
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql_psycopg2',

@@ -296,8 +296,6 @@ class SubAckTestCase(TestCase):
         pkg = SubAck(pack_identifier=0x1234)
         for f in range(int('1111', 2)):
             pkg.flags = f+1
-            if pkg.flags == MQTTFlagsTable[pkg.ctl]:
-                pkg.flags = 0x0000
             self.assertRaises(MQTTException, self.do_check, pkg)
 
     def test_invalid_code(self):
@@ -346,8 +344,6 @@ class PingReqTestCase(TestCase):
         pkg = PingReq()
         for f in range(int('1111', 2)):
             pkg.flags = f+1
-            if pkg.flags == MQTTFlagsTable[pkg.ctl]:
-                pkg.flags = 0x0000
             self.assertRaises(MQTTException, self.do_check, pkg)
 
     def test_valid(self):
@@ -364,8 +360,6 @@ class PingRespTestCase(TestCase):
         pkg = PingResp()
         for f in range(int('1111', 2)):
             pkg.flags = f+1
-            if pkg.flags == MQTTFlagsTable[pkg.ctl]:
-                pkg.flags = 0x0000
             self.assertRaises(MQTTException, self.do_check, pkg)
 
     def test_valid(self):
@@ -382,8 +376,6 @@ class DisconnectTestCase(TestCase):
         pkg = Disconnect()
         for f in range(int('1111', 2)):
             pkg.flags = f+1
-            if pkg.flags == MQTTFlagsTable[pkg.ctl]:
-                pkg.flags = 0x0000
             self.assertRaises(MQTTException, self.do_check, pkg)
 
     def test_valid(self):

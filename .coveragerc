@@ -1,0 +1,5 @@
+[run]
+omit=setup.py,ez_setup.py,test_web/wsgi.py
+
+[report]
+skip_covered=True
