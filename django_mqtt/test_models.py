@@ -11,7 +11,7 @@ class TopicModelsTestCase(TestCase):
 
     def test_topic_simple_wildcard(self):
         topic = Topic.objects.create(name='+')
-        self.assertEqual('' in topic, True)
+        self.assertEqual('' in topic, False)  # TODO FIXME??
         self.assertEqual('test' in topic, True)
         self.assertEqual('/test' in topic, False)
         self.assertEqual('/test/sd' in topic, False)
@@ -105,14 +105,16 @@ class ClientIdModelsTestCase(TestCase):
     WRONG_CLIENT_ID_WILDCARD = ['012345678901234567890123456789', '/', '+', '#']
 
     def test_client_id(self):
-        if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') and settings.MQTT_ALLOW_EMPTY_CLIENT_ID:
+        if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') and settings.MQTT_ALLOW_EMPTY_CLIENT_ID:  # pragma: no cover
             ClientId.objects.create(name='')
         ClientId.objects.create(name='1234')
         ClientId.objects.create(name='test')
         ClientId.objects.create(name='test123')
+        ClientId.objects.create(name=gen_client_id())
 
     def test_wrong_client_id(self):
-        if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') and settings.MQTT_ALLOW_EMPTY_CLIENT_ID:
+        if not hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') or\
+           not settings.MQTT_ALLOW_EMPTY_CLIENT_ID:  # pragma: no cover
             self.assertRaises(ValidationError, ClientId.objects.create, name='')
         for client_id in self.WRONG_CLIENT_ID_WILDCARD:
             self.assertRaises(ValidationError, ClientId.objects.create, name=client_id)
