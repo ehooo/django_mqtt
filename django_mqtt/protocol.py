@@ -1,7 +1,6 @@
 import paho.mqtt.client as mqtt
 import random
 import struct
-import six
 import re
 
 
@@ -165,7 +164,7 @@ def get_string(buff, exception=False):
                 raise ValueError('char 0x0000 not allowed')
             utf8_str = utf8_str.replace(MQTT_NONE_CHAR, '')
         return utf8_str
-    except UnicodeEncodeError as er:
+    except UnicodeDecodeError as er:
         if exception:
             raise er
     except struct.error as er:
@@ -185,22 +184,23 @@ def gen_string(uni_str, exception=False):
         return ''
     try:
         utf8_str = uni_str.encode('utf8')
+        if MQTT_NONE_CHAR in utf8_str:
+            if exception:
+                raise ValueError('char 0x0000 not allowed')
+            utf8_str = utf8_str.replace(MQTT_NONE_CHAR, '')
         str_size = len(utf8_str)
         fmt = "!H"+("B"*str_size)
         byte_str = map(ord, utf8_str)
         return struct.pack(fmt, str_size, *byte_str)
-    except UnicodeEncodeError as ex:
+    except UnicodeDecodeError as ex:
         if exception:
             raise ex
-    except struct.error as er:
-        if exception:
-            raise er
     return ''
 
 
 def gen_client_id():
     rand = random.SystemRandom()
     client_id = ''
-    for s in six.range(rand.randint(1, 23)):
+    for s in range(rand.randint(1, 23)):
         client_id += rand.choice('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ')
-    return id
+    return client_id

@@ -2,7 +2,6 @@ from django_mqtt.protocol import *
 import logging
 import struct
 import random
-import os
 
 
 class MQTTException(Exception):
@@ -28,12 +27,12 @@ class MQTTException(Exception):
 
 class MQTTProtocolException(MQTTException):
     def get_nack(self):
-        if self.errno in [mqtt.CONNACK_REFUSED_NOT_AUTHORIZED,
+        if self.errno in [mqtt.CONNACK_ACCEPTED,
+                          mqtt.CONNACK_REFUSED_PROTOCOL_VERSION,
                           mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED,
-                          mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED,
-                          mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED,
-                          mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED,
-                          mqtt.CONNACK_REFUSED_PROTOCOL_VERSION]:
+                          mqtt.CONNACK_REFUSED_SERVER_UNAVAILABLE,
+                          mqtt.CONNACK_REFUSED_BAD_USERNAME_PASSWORD,
+                          mqtt.CONNACK_REFUSED_NOT_AUTHORIZED]:
             conn_ack = ConnAck()
             conn_ack.ret_code = self.errno
             return conn_ack
@@ -419,7 +418,7 @@ class Connect(BaseMQTT):
             elif MQTT_NONE_CHAR in self.topic:
                 raise MQTTException("Charter 0x0000 not allowed")
             if not self.topic:
-                raise MQTTException("Emply topic not allowed")
+                raise MQTTException("Emply topic required according flags")
             if self.msg is None:
                 raise MQTTException("Message required according flags")
         if self.has_name():

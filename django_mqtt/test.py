@@ -1,8 +1,31 @@
 
+from django_mqtt.test_models import *
+from django_mqtt.validators import *
+from django_mqtt.protocol import *
+
 from django.test import TestCase
 
-from django_mqtt.protocol import *
-from django_mqtt import test_models
+
+class ValidatorTestCase(TestCase):
+
+    def test_client_id(self):
+        validator = ClientIdValidator(valid_empty=None)
+        self.assertRaises(ValidationError, validator, '')
+        validator = ClientIdValidator(valid_empty=True)
+        self.assertEqual(validator(''), None)
+        validator = ClientIdValidator(valid_empty=False)
+        self.assertRaises(ValidationError, validator, '')
+
+    def test_topic(self):
+        validator = TopicValidator(only_wildcards=None, not_wildcards=None)
+        self.assertRaises(ValidationError, validator, '')
+        validator = TopicValidator(only_wildcards=True, not_wildcards=True)
+        self.assertRaises(ValidationError, validator, '/valid/topic')
+        self.assertRaises(ValidationError, validator, '/valid/topic')
+        validator = TopicValidator(only_wildcards=True, not_wildcards=False)
+        self.assertRaises(ValidationError, validator, '/valid/topic')
+        validator = TopicValidator(only_wildcards=False, not_wildcards=True)
+        self.assertRaises(ValidationError, validator, '/+/topic')
 
 
 class ProtocolTestCase(TestCase):
@@ -56,6 +79,7 @@ class ProtocolTestCase(TestCase):
         self.assertRaises(struct.error, get_remaining, '\x80\x80', exception=True)
         self.assertRaises(struct.error, get_remaining, '\x00\x80', exception=True)
         self.assertRaises(struct.error, get_remaining, '\x00\x01\x00\x00', exception=True)
+        self.assertRaises(struct.error, get_remaining, '\x80\x01\x00', exception=True)
 
     def test_get_remaining(self):
         self.assertEqual(get_remaining('\x00', exception=False), 0)
@@ -68,11 +92,25 @@ class ProtocolTestCase(TestCase):
         self.assertEqual(get_remaining('\xff\xff\xff\x7f', exception=False), 268435455)
 
     def test_wrong_gen_string(self):
+        self.assertEqual(gen_string('\xff'), '')
         self.assertEqual(gen_string(None), '')
         self.assertEqual(gen_string(object), '')
-        self.assertRaises(UnicodeDecodeError, gen_string, '\xff')
+        self.assertEqual(gen_string('\xff\xff\x00'), '')
+        self.assertEqual(gen_string('\x00\x02\x00\x00'), '\x00\x02\x00\x02')
+        self.assertEqual(gen_string('\x00\x01\xC0'), '')
+        self.assertEqual(gen_string('\x00\x01\xC1'), '')
+        self.assertEqual(gen_string('\x00\x01\xF5'), '')
+        self.assertEqual(gen_string('\x00\x01\xFF'), '')
+
+        self.assertRaises(UnicodeDecodeError, gen_string, '\xff', exception=True)
         self.assertRaises(TypeError, gen_string, None, exception=True)
         self.assertRaises(TypeError, gen_string, object, exception=True)
+        self.assertRaises(UnicodeDecodeError, gen_string, '\xff\xff\x00', exception=True)
+        self.assertRaises(ValueError, gen_string, '\x00\x02\x00\x00', exception=True)
+        self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xC0', exception=True)
+        self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xC1', exception=True)
+        self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xF5', exception=True)
+        self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xFF', exception=True)
 
     def test_empty_strings(self):
         self.assertEqual(gen_string(''), '\x00\x00')
@@ -105,10 +143,18 @@ class ProtocolTestCase(TestCase):
     def test_wrong_get_string(self):
         self.assertEqual(get_string(None), '')
         self.assertEqual(get_string('\xff'), '')
-        self.assertEqual(get_string('\x00\x00\x01'), '')
-        self.assertEqual(get_string('\x00\x01\x00'), '\x00')
+        self.assertEqual(get_string('\xff\xff'), '')
+
+        self.assertEqual(get_string('\xff\xff\x00'), '')
         self.assertEqual(get_string('\x00\x02\x00\x00'), '')
+        self.assertEqual(get_string('\x00\x01\xC0'), '')
+        self.assertEqual(get_string('\x00\x01\xC1'), '')
+        self.assertEqual(get_string('\x00\x01\xF5'), '')
+        self.assertEqual(get_string('\x00\x01\xFF'), '')
+        self.assertEqual(get_string('\x00\x01\x00'), '\x00')
+
         self.assertRaises(TypeError, get_string, object)
+        self.assertRaises(TypeError, get_string, '\xff', exception=True)
         self.assertRaises(struct.error, get_string, '\xff\xff', exception=True)
         self.assertRaises(struct.error, get_string, '\xff\xff\x00', exception=True)
         self.assertRaises(ValueError, get_string, '\x00\x02\x00\x00', exception=True)

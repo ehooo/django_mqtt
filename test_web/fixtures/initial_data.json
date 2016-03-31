@@ -90,13 +90,35 @@
     }
   },
   {
+    "model": "publisher.server",
+    "pk": 2,
+    "fields": {
+      "host": "test.mosquitto.org",
+      "port": 1883,
+      "secure": null,
+      "protocol": 4,
+      "status": 6
+    }
+  },
+  {
     "model": "publisher.client",
     "pk": 1,
     "fields": {
       "server": 1,
       "auth": null,
       "client_id": 1,
-      "keepalive": 60,
+      "keepalive": 10,
+      "clean_session": false
+    }
+  },
+  {
+    "model": "publisher.client",
+    "pk": 2,
+    "fields": {
+      "server": 2,
+      "auth": null,
+      "client_id": 1,
+      "keepalive": 10,
       "clean_session": false
     }
   }

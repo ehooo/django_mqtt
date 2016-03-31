@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'django_mqtt.publisher',
 ]
 FIXTURE_DIRS = [
-    os.path.join(BASE_DIR, 'test_web')
+    os.path.join(BASE_DIR, 'test_web', 'fixtures')
 ]
 
 MIDDLEWARE_CLASSES = (

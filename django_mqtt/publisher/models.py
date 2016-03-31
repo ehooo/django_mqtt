@@ -121,7 +121,7 @@ class SecureConf(models.Model):
         :var ciphers: is a string specifying which encryption ciphers are allowable for this connection,
 or None to use the defaults.
     """
-    ca_certs = models.CharField(max_length=1024)
+    ca_certs = models.FileField(upload_to='ca', storage=private_fs)
     cert_reqs = models.IntegerField(choices=CERT_REQS, default=ssl.CERT_REQUIRED)
     tls_version = models.IntegerField(choices=PROTO_SSL_VERSION, default=ssl.PROTOCOL_TLSv1)
     certfile = models.FileField(upload_to='certs', storage=private_fs, blank=True, null=True)
@@ -201,18 +201,20 @@ class Client(models.Model):
 
     def get_mqtt_client(self, empty_client_id=False):
         client_id = None
+        clean = True
         if self.client_id:
             client_id = self.client_id.name
-        if not self.clean_session and empty_client_id:
-            client_id = None
-        cli = mqtt.Client(client_id, self.clean_session, protocol=self.server.protocol)
-        if self.server.secure:
+            clean = self.clean_session
+            if not self.clean_session and empty_client_id:
+                client_id = None
+        cli = mqtt.Client(client_id, clean, protocol=self.server.protocol)
+        if self.server.secure:  # TODO use it! pragma: no cover
             tls_args = {
                 'cert_reqs': self.server.secure.cert_reqs,
                 'tls_version': self.server.secure.tls_version,
                 'ciphers': self.server.secure.ciphers
             }
-            if self.server.secure.certfile:  # TODO check the path
+            if self.server.secure.certfile:
                 tls_args['certfile'] = self.server.secure.certfile.name
             if self.server.secure.keyfile:
                 tls_args['keyfile'] = self.server.secure.keyfile.path
@@ -256,30 +258,31 @@ class Data(models.Model):
         return "%s - %s - %s" % (self.payload, self.topic, self.client)
 
     def update_remote(self):
-        cli = self.client.get_mqtt_client()
+        cli = self.client.get_mqtt_client(empty_client_id=self.client.client_id is None)
         try:
             mqtt_connect.send(sender=Server.__class__, client=self.client)
             cli.connect(self.client.server.host, self.client.server.port, self.client.keepalive)
             mqtt_pre_publish.send(sender=Data.__class__, client=self.client,
                                   topic=self.topic, payload=self.payload, qos=self.qos, retain=self.retain)
-            (rc, mid) = cli.publish(self.topic, self.payload, self.qos, self.retain)
+            (rc, mid) = cli.publish(self.topic.name, self.payload, self.qos, self.retain)
             self.client.server.status = rc
             self.client.server.save()
             mqtt_publish.send(sender=Client.__class__, client=self.client, userdata=cli._userdata, mid=mid)
             cli.loop_write()
-            if not self.client.client_id:
-                self.client.client_id = cli._client_id
+            if not self.client.clean_session and not self.client.client_id:
+                name = cli._client_id.split('/')[-1]  # Filter for auto-gen in format paho/CLIENT_ID
+                cli_id, is_new = ClientId.objects.get_or_create(name=name)
+                self.client.client_id = cli_id
                 self.client.save()
             cli.disconnect()
             mqtt_disconnect.send(sender=Server.__class__, client=self.client, userdata=cli._userdata, rc=rc)
-        except socket.gaierror as ex:
-            # See PROTO_MQTT_CONN_ERROR
+        except socket.gaierror as ex:  # pragma: no cover
             if ex.errno == 11004:
-                self.client.server.status = 191
+                self.client.server.status = PROTO_MQTT_CONN_ERROR_ADDR_FAILED
             else:
                 self.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
             self.client.server.save()
-        except IOError as ex:
+        except IOError as ex:  # pragma: no cover
             # See in socket: WSA error codes
             if ex.errno == 10004:
                 self.client.server.status = PROTO_MQTT_CONN_ERROR_INTERRUPTED

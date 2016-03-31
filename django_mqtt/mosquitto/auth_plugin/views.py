@@ -18,9 +18,9 @@ class Auth(View):
 
     def post(self, request, *args, **kwargs):
         data = {}
-        if hasattr(request, 'POST'):
+        if hasattr(request, 'POST'):  # pragma: no cover
             data = request.POST
-        elif hasattr(request, 'DATA'):
+        elif hasattr(request, 'DATA'):  # pragma: no cover
             data = request.DATA
 
         user = authenticate(username=data.get('username'), password=data.get('password'))
@@ -38,9 +38,9 @@ class Superuser(View):
 
     def post(self, request, *args, **kwargs):
         data = {}
-        if hasattr(request, 'POST'):
+        if hasattr(request, 'POST'):  # pragma: no cover
             data = request.POST
-        elif hasattr(request, 'DATA'):
+        elif hasattr(request, 'DATA'):  # pragma: no cover
             data = request.DATA
         try:
             user = User.objects.get(username=data.get('username'), is_active=True)
@@ -60,9 +60,9 @@ class Acl(View):
 
     def post(self, request, *args, **kwargs):
         data = {}
-        if hasattr(request, 'POST'):
+        if hasattr(request, 'POST'):  # pragma: no cover
             data = request.POST
-        elif hasattr(request, 'DATA'):
+        elif hasattr(request, 'DATA'):  # pragma: no cover
             data = request.DATA
         allow = False
         if hasattr(settings, 'MQTT_ACL_ALLOW'):
@@ -91,8 +91,6 @@ class Acl(View):
 
         if allow and hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
             if user is None:
-                allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
-            elif user.is_anonymous():
                 allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
 
         if not allow:

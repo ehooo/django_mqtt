@@ -27,7 +27,17 @@ if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID'):
     ALLOW_EMPTY_CLIENT_ID = settings.MQTT_ALLOW_EMPTY_CLIENT_ID
 
 
-class ClientId(models.Model):
+class SecureSave(models.Model):
+    class Meta:
+        abstract = True
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        self.full_clean()
+        return super(SecureSave, self).save(force_insert=force_insert, force_update=force_update,
+                                          using=using, update_fields=update_fields)
+
+
+class ClientId(SecureSave):
     name = models.CharField(max_length=23, db_index=True, blank=True,
                             validators=[ClientIdValidator(valid_empty=ALLOW_EMPTY_CLIENT_ID)])
     users = models.ManyToManyField(User, blank=True)
@@ -53,13 +63,8 @@ class ClientId(models.Model):
             if self.name == '':
                 raise ValidationError('Empty client_id not allowed', code='invalid')
 
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        self.full_clean()
-        return super(ClientId, self).save(force_insert=force_insert, force_update=force_update,
-                                          using=using, update_fields=update_fields)
 
-
-class Topic(models.Model):
+class Topic(SecureSave):
     name = models.CharField(max_length=1024, validators=[TopicValidator()], db_index=True, unique=True, blank=True)
     wildcard = models.BooleanField(default=False)
     dollar = models.BooleanField(default=False)
@@ -83,6 +88,9 @@ class Topic(models.Model):
         elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
             return self in Topic(other)
         return False
+
+    def __len__(self):
+        return len(self.name)
 
     def __gt__(self, other):
         if isinstance(other, Topic):
@@ -173,7 +181,6 @@ class Topic(models.Model):
              update_fields=None):
         self.wildcard = self.is_wildcard()
         self.dollar = self.is_dollar()
-        self.full_clean()
         return super(Topic, self).save(force_insert=force_insert, force_update=force_update,
                                        using=using, update_fields=update_fields)
 
