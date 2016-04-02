@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.conf import settings
 from django.db import models
 
-SESSION_TIMEOUT = 5
+SESSION_TIMEOUT = 60
 if hasattr(settings, 'MQTT_SESSION_TIMEOUT'):
     SESSION_TIMEOUT = settings.MQTT_SESSION_TIMEOUT
 

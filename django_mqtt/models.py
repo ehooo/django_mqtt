@@ -48,8 +48,11 @@ class ClientId(SecureSave):
 
     def has_permission(self, user):
         if not self.is_public():
-            if user in self.users or self.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
-                return True
+            if user:
+                if self.users.filter(pk=user.pk):
+                    return True
+                elif self.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
+                    return True
         return self.is_public()
 
     def __unicode__(self):
@@ -65,7 +68,7 @@ class ClientId(SecureSave):
 
 
 class Topic(SecureSave):
-    name = models.CharField(max_length=1024, validators=[TopicValidator()], db_index=True, unique=True, blank=True)
+    name = models.CharField(max_length=1024, validators=[TopicValidator()], db_index=True, unique=True, blank=False)
     wildcard = models.BooleanField(default=False)
     dollar = models.BooleanField(default=False)
 
@@ -83,16 +86,21 @@ class Topic(SecureSave):
         return False
 
     def __lt__(self, other):
+        comp = None
         if isinstance(other, Topic):
-            return self in other
+            comp = other
         elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
-            return self in Topic(other)
-        return False
+            comp = Topic(name=other)
+        if not comp or not comp.is_wildcard():
+            return False
+        return self in comp
 
     def __len__(self):
         return len(self.name)
 
     def __gt__(self, other):
+        if not self.is_wildcard():
+            return False
         if isinstance(other, Topic):
             return other in self
         elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
@@ -120,8 +128,6 @@ class Topic(SecureSave):
             return False
         elif (self.is_dollar() and not comp.is_dollar()) or (comp.is_dollar() and not self.is_dollar()):
             return False
-        elif (self.is_dollar() and not comp.is_dollar()) or (comp.is_dollar() and not self.is_dollar()):
-            return False
 
         my_parts = self.name.split(TOPIC_SEP)
         comp_parts = comp.name.split(TOPIC_SEP)
@@ -141,7 +147,6 @@ class Topic(SecureSave):
             if part == WILDCARD_SINGLE_LEVEL:
                 if comp.is_wildcard() and compare == WILDCARD_MULTI_LEVEL:
                     return False
-                continue
             elif part == WILDCARD_MULTI_LEVEL:
                 return True
             elif part != compare:

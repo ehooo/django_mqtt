@@ -47,12 +47,14 @@ class PublishTestCase(TestCase):
         client.get_mqtt_client(empty_client_id=True)
 
     def test_publish_fail(self):
-        client_id = ClientId.objects.create(name='fail0publish')
         server = Server.objects.create(host='localhost', port=1883)
         init_status = server.status
         self.assertNotEqual(server.status, PROTO_MQTT_CONN_OK)
         auth = Auth.objects.create(user='admin', password='admin1234')
-        client = Client.objects.create(server=server, auth=auth, client_id=client_id, clean_session=False, keepalive=5)
+        self.assertEqual(str(auth), 'admin:*********')
+        self.assertEqual(unicode(auth), u'admin:*********')
+        client = Client.objects.create(server=server, auth=auth, clean_session=False, keepalive=5)
+        self.assertEqual(client.client_id, None)
 
         topic = Topic.objects.create(name='/fail/publish')
         for qos in [MQTT_QoS0, MQTT_QoS1, MQTT_QoS2]:
@@ -66,7 +68,7 @@ class PublishTestCase(TestCase):
             server.status = init_status
             server.save()
 
-    def test_publish_ok(self):
+    def test_publish_ok_clear(self):
         server = Server.objects.create(host='test.mosquitto.org', port=1883)
         self.assertEqual(server.status, PROTO_MQTT_CONN_ERROR_UNKNOWN)
         init_status = server.status
@@ -91,4 +93,38 @@ class PublishTestCase(TestCase):
             client = Client.objects.get(pk=client.pk)
             self.assertNotEqual(client.client_id, None)
             client.client_id = None
+            client.save()
+
+    def test_publish_ok(self):
+        client_id = ClientId.objects.create(name='publisher')
+        server = Server.objects.create(host='test.mosquitto.org', port=1883)
+        self.assertEqual(str(server), 'mqtt://test.mosquitto.org:1883')
+        self.assertEqual(unicode(server), u'mqtt://test.mosquitto.org:1883')
+        self.assertEqual(server.status, PROTO_MQTT_CONN_ERROR_UNKNOWN)
+        self.assertNotEqual(server.status, PROTO_MQTT_CONN_OK)
+        client = Client.objects.create(server=server, clean_session=True, client_id=client_id)
+        self.assertEqual(str(client), 'publisher - mqtt://test.mosquitto.org:1883')
+        self.assertEqual(unicode(client), u'publisher - mqtt://test.mosquitto.org:1883')
+
+        topic = Topic.objects.create(name='/test/publish')
+        for qos in [MQTT_QoS0, MQTT_QoS1, MQTT_QoS2]:
+            data, is_new = Data.objects.get_or_create(client=client, topic=topic)
+            data.qos = qos
+            data.payload = 'test %(qos)s' % {'qos': qos}
+            data.retain = True
+            data.save()
+            self.assertEqual(str(data), 'test %(qos)s - /test/publish - publisher - mqtt://test.mosquitto.org:1883' %
+                             {'qos': qos})
+            self.assertEqual(unicode(data),
+                             u'test %(qos)s - /test/publish - publisher - mqtt://test.mosquitto.org:1883' %
+                             {'qos': qos})
+            data.update_remote()
+
+            server = Server.objects.get(pk=server.pk)
+            self.assertEqual(server.status, PROTO_MQTT_CONN_OK)
+            server.status = PROTO_MQTT_CONN_ERROR_UNKNOWN
+            server.save()
+
+            client = Client.objects.get(pk=client.pk)
+            self.assertNotEqual(client.client_id, None)
             client.save()

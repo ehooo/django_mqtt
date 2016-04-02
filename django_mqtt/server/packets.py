@@ -135,7 +135,7 @@ class BaseMQTT(object):
         """
             Help function to set easy the flags options
         """
-        raise NotImplemented
+        raise NotImplemented  # pragma: no cover
 
     def get_variable_header(self):
         """
@@ -144,7 +144,7 @@ class BaseMQTT(object):
         if self.ctl in [mqtt.PUBACK, mqtt.PUBREC, mqtt.PUBREL, mqtt.PUBCOMP,
                         mqtt.SUBSCRIBE, mqtt.SUBACK, mqtt.UNSUBSCRIBE, mqtt.UNSUBACK]:
             return struct.pack("!H", self.pack_identifier)
-        raise NotImplemented
+        raise NotImplemented  # pragma: no cover
 
     def get_payload(self):
         """
@@ -154,7 +154,7 @@ class BaseMQTT(object):
                         mqtt.PUBREL, mqtt.PUBCOMP, mqtt.UNSUBACK,
                         mqtt.PINGREQ, mqtt.PINGRESP, mqtt.DISCONNECT]:
             return ""
-        raise NotImplemented
+        raise NotImplemented  # pragma: no cover
 
     def __unicode__(self):
         msg = self.get_variable_header()
@@ -170,7 +170,7 @@ class BaseMQTT(object):
             Set values from the body. This body contains all data since remain
             :raise: MQTTException
         """
-        raise NotImplemented
+        raise NotImplemented  # pragma: no cover
 
     def check_integrity(self):
         """
