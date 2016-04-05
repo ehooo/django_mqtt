@@ -22,7 +22,7 @@ PROTO_MQTT_QoS = (
 
 
 class Channel(models.Model):
-    qos = models.IntegerField(choices=PROTO_MQTT_QoS, default=0)
+    qos = models.IntegerField(choices=PROTO_MQTT_QoS, default=MQTT_QoS0)
     topic = models.ForeignKey(Topic)
 
     class Meta:
@@ -49,18 +49,46 @@ class Session(models.Model):
     subscriptions = models.ManyToManyField(Channel)
     unsubscriptions = models.ManyToManyField(Topic)
 
+    def subscribe(self, channel=None, topic=None, qos=MQTT_QoS0):
+        if not isinstance(channel, Channel):
+            if not isinstance(topic, Topic):
+                if isinstance(topic, six.string_types) or isinstance(topic, six.text_type):
+                    topic, is_new = Topic.objects.get_or_create(name=topic)
+                else:
+                    raise ValueError('Channel or topic required')
+            channel, is_new = Channel.objects.get_or_create(topic=topic, qos=qos)
+        self.subscriptions.add(channel)
+        self.unsubscriptions.remove(channel.topic)
+
+    def unsubscribe(self, topic):
+        if not isinstance(topic, Topic):
+            if isinstance(topic, six.string_types) or isinstance(topic, six.text_type):
+                topic, is_new = Topic.objects.get_or_create(name=topic)
+            else:
+                raise ValueError('topic must be string or Topic')
+        candidates = self.subscriptions.filter(topic=topic)
+        if candidates.exists():
+            for ch in candidates:
+                self.subscriptions.remove(ch)
+        self.unsubscriptions.add(topic)
+
+    def disconnect(self, clear=True):
+        self.active = False
+        Session.objects.filter(pk=self.pk, active=True).update(active=self.active)
+        if clear:
+            self.subscriptions.clear()
+            self.unsubscriptions.clear()
+
     def ping(self):
         self.active = True
         self.last_update = timezone.now()
-        self.objects.filter(pk=self.pk).update(last_update=self.last_update)
-        self.objects.filter(pk=self.pk, active=False).update(active=self.active)
+        Session.objects.filter(pk=self.pk).update(last_update=self.last_update, active=self.active)
 
-    def is_alive(self):
+    def is_alive(self, clear=False):
         if self.active:
             keep_until = self.last_update + timedelta(seconds=self.keep_alive)
-            if keep_until > timezone.now():
-                self.active = False
-                self.objects.filter(pk=self.pk, active=True).update(active=self.active)
+            if keep_until < timezone.now():
+                self.disconnect(clear)
         return self.active
 
     def __unicode__(self):
@@ -70,14 +98,38 @@ class Session(models.Model):
         return str('%(client_id)s - %(user)s' % {'client_id': self.client_id, 'user': self.user})
 
     def is4me(self, topic, qos):
-        if topic in self.unsubscriptions:
+        if isinstance(topic, six.string_types) or isinstance(topic, six.text_type):
+            topic, is_new = Topic.objects.get_or_create(name=topic)
+        elif not isinstance(topic, Topic):
+            raise ValueError('topic must be Topic or String')
+        if not self.is_alive():
             return False
+        not_cadidate = []
+        for not_topic in self.unsubscriptions.all():
+            if not not_topic.is_wildcard():
+                if topic == not_topic:
+                    return False
+            elif topic in not_topic:
+                not_cadidate.append(not_topic)
+
         acl = ACL.get_acl(topic, PROTO_MQTT_ACC_SUS)
         if acl and not acl.has_permission(self.user):
             return False
+        candidates = []
         for channel in self.subscriptions.filter(qos__gte=qos):
-            if topic in channel.topic:
-                return True
+            if not channel.topic.is_wildcard():
+                if topic == channel.topic:
+                    return True
+            elif topic in channel.topic:
+                if len(not_cadidate) > 0:
+                    for not_topic in not_cadidate:
+                        if not_topic > channel.topic:
+                            candidates.append(channel.topic)
+                else:
+                    return True
+        if len(candidates) > 0:
+            return True
+        return False
 
 
 class Publication(models.Model):

@@ -1,5 +1,5 @@
 [run]
-omit=setup.py,ez_setup.py,test_web/wsgi.py,django_mqtt/publisher/management/commands/mqtt_subscriber.py
+omit=*setup.py,test_web/wsgi.py,*/management/commands/*
 
 [report]
 skip_covered=True

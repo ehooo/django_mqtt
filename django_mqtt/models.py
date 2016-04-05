@@ -198,7 +198,8 @@ class ACL(models.Model):
     groups = models.ManyToManyField(Group, blank=True)
     password = models.CharField(max_length=512, blank=True, null=True,
                                 help_text='Only valid for connect')
-    only_username = models.NullBooleanField(default=None)
+    only_username = models.NullBooleanField(default=None,
+                                            help_text='Only valid for connect')
 
     class Meta:
         unique_together = ('topic', 'acc')
@@ -214,9 +215,7 @@ class ACL(models.Model):
         if hasattr(settings, 'MQTT_ACL_ALLOW'):
             allow = settings.MQTT_ACL_ALLOW
         if allow and hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
-            if user is None:
-                allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
-            elif user.is_anonymous():
+            if user is None or user.is_anonymous():
                 allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
         try:
             broadcast_topic = Topic.objects.get(name=WILDCARD_MULTI_LEVEL)
@@ -230,6 +229,10 @@ class ACL(models.Model):
 
     @classmethod
     def get_acl(cls, topic, acc=PROTO_MQTT_ACC_PUB):
+        if isinstance(topic, six.string_types) or isinstance(topic, six.text_type):
+            topic, is_new = Topic.objects.get_or_create(name=topic)
+        elif not isinstance(topic, Topic):
+            raise ValueError('topic must be Topic or String')
         candidates = []
         try:
             candidates = [ACL.objects.get(topic=topic, acc=acc)]

@@ -1,5 +1,4 @@
 from django_mqtt.protocol import *
-import logging
 import struct
 import random
 
@@ -295,8 +294,7 @@ class Connect(BaseMQTT):
         else:
             try:
                 self._topic = gen_string(topic, exception=True)
-            except Exception as ex:
-                logging.warn('topic contains not valid format %s' % (ex, ))
+            except Exception:
                 self._topic = gen_string(topic)
             if self.msg is None:
                 self.set_flags(flag=False)
@@ -713,6 +711,11 @@ class Unsubscribe(BaseMQTT):
             self.add_topic(topic)
         if len(body) > padding:
             raise MQTTException('Body too big')
+
+    def check_integrity(self):
+        if not self.topic_list:
+            raise MQTTException('Unsubcribe must contains at last one topic')
+        super(Unsubscribe, self).check_integrity()
 
 
 class UnsubAck(MQTTOnlyPackID):
