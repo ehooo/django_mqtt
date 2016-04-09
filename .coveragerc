@@ -1,5 +1,5 @@
 [run]
-omit=*setup.py,test_web/wsgi.py,*/management/commands/*
+omit=*setup.py,test_web/*,*/management/*,*/migrations/*
 
 [report]
 skip_covered=True

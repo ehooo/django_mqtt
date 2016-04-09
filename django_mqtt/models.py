@@ -153,32 +153,37 @@ class Topic(SecureSave):
                 return False
         return True
 
+    def get_candidates(self):
+        candidates = Topic.objects.filter(dollar=self.is_dollar(), wildcard=False)
+        init = Topic.objects.filter(dollar=self.is_dollar(), wildcard=False)
+        topic = self.name
+        multi = False
+        if topic.endswith(WILDCARD_MULTI_LEVEL):
+            topic = topic[:-1]
+            multi = True
+
+        parts = topic.split(WILDCARD_SINGLE_LEVEL)
+        if len(parts) == 1:
+            if len(topic) != 0:
+                candidates = candidates.filter(name__startswith=topic)
+        elif topic == WILDCARD_SINGLE_LEVEL:
+            candidates = candidates.exclude(name__contains=TOPIC_SEP)
+        else:
+            if multi:
+                ini = candidates.filter(name__startswith=parts[0])
+                con = candidates.filter(name__contains=parts[-1])
+                candidates = candidates.filter(name__startswith=parts[0], name__contains=parts[-1])
+            else:
+                candidates = candidates.filter(name__startswith=parts[0], name__endswith=parts[-1])
+            for part in set(parts[1:-1]):
+                candidates = candidates.filter(name__contains=part)
+        return candidates
+
     def __iter__(self):
         if not self.is_wildcard():
             yield self
         else:
-            candidates = self.objects.filter(dollar=self.is_dollar(), wildcard=False)
-            topic = self.name
-            multi = False
-            if topic.endswith(WILDCARD_MULTI_LEVEL):
-                topic = topic[:-1]
-                multi = True
-
-            parts = topic.split(WILDCARD_SINGLE_LEVEL)
-            if len(parts) == 1:
-                if multi:
-                    candidates = candidates.filter(topic__name__startswith=self.name)
-                else:
-                    candidates = candidates.filter(topic__name=self.name)
-            else:
-                if multi:
-                    candidates = candidates.filter(topic__name__startswith=parts[0], topic__name__contains=parts[-1])
-                else:
-                    candidates = candidates.filter(topic__name__startswith=parts[0], topic__name__endswith=parts[-1])
-                for part in parts[1:-1]:
-                    candidates = candidates.filter(topic__name__contains=part)
-
-            for candidate in candidates.all():
+            for candidate in self.get_candidates().all():
                 if candidate in self:
                     yield candidate
 
@@ -227,6 +232,14 @@ class ACL(models.Model):
             pass
         return allow
 
+    def __gt__(self, other):
+        if isinstance(other, ACL):
+            return self.topic > other.topic
+
+    def __lt__(self, other):
+        if isinstance(other, ACL):
+            return self.topic < other.topic
+
     @classmethod
     def get_acl(cls, topic, acc=PROTO_MQTT_ACC_PUB):
         if isinstance(topic, six.string_types) or isinstance(topic, six.text_type):
@@ -237,9 +250,8 @@ class ACL(models.Model):
         try:
             candidates = [ACL.objects.get(topic=topic, acc=acc)]
         except ACL.DoesNotExist:
-            for candidate in cls.objects.filter(topic__wildcard=True,
-                                                acc=acc).values_list('topic'):
-                if topic in candidate:
+            for candidate in cls.objects.filter(topic__wildcard=True, acc=acc):
+                if topic in candidate.topic:
                     candidates.append(candidate)
         if len(candidates) == 0:
             return None

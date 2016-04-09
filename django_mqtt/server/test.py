@@ -7,6 +7,18 @@ from django_mqtt.server.packets import *
 from django_mqtt.protocol import *
 
 
+class MQTTExceptionTestCase(TestCase):
+    def test_proto(self):
+        ex = MQTTProtocolException('test', errno=mqtt.CONNACK_ACCEPTED)
+        self.assertEqual(unicode(ex), 'test')
+        self.assertEqual(ex.get_nack(), None)
+        ex = MQTTProtocolException('test', errno=mqtt.CONNACK_REFUSED_NOT_AUTHORIZED)
+        self.assertEqual(unicode(ex), '[5] test')
+        self.assertNotEqual(ex.get_nack(), None)
+        ex = MQTTException(exception=ValueError('error'))
+        self.assertEqual(unicode(ex), 'error')
+
+
 class ConnectTestCase(TestCase):
 
     def do_check(self, pkg):
@@ -232,6 +244,8 @@ class PublisherTestCase(TestCase):
     def test_valid_qos0(self):
         pkg = Publish(topic="/test", msg="test", qos=0, dup=False, retain=False)
         self.do_check(pkg)
+        pkg._QoS = None
+        self.assertEqual(pkg.QoS, 0)
         self.assertEqual(pkg.has_retain(), False)
         pkg.set_flags(retain=True)
         self.assertEqual(pkg.has_retain(), True)
@@ -240,12 +254,16 @@ class PublisherTestCase(TestCase):
     def test_invalid_qos0(self):
         pkg = Publish(topic="/test", msg="test", qos=0, dup=True, retain=False)
         self.assertRaises(MQTTException, self.do_check, pkg)
+        self.assertEqual(pkg.pack_identifier, None)
         pkg = Publish(topic="/test", msg="test", qos=0, pack_identifier=0x1234)
         self.assertRaises(MQTTException, self.do_check, pkg)
 
     def test_valid_qos1(self):
-        pkg = Publish(topic="/test", msg="test", qos=1, dup=False, retain=False, pack_identifier=0x1234)
-        self.do_check(pkg)
+        pkg = Publish(topic="/test", msg="test", qos=1, dup=False, retain=False)
+        self.assertEqual(pkg.pack_identifier, None)
+        self.assertRaises(MQTTException, self.do_check, pkg)
+        pkg.auto_pack_identifier = True
+        self.assertNotEqual(pkg.pack_identifier, None)
         pkg = Publish(topic="/test", msg="test", qos=1, dup=False, retain=True, pack_identifier=0x1234)
         self.do_check(pkg)
         pkg = Publish(topic="/test", msg="test", qos=1, dup=True, retain=True, pack_identifier=0x1234)
@@ -485,7 +503,6 @@ class UnpubAckTestCase(TestCase):
     def test_valid_ack(self):
         pkg = UnsubAck(pack_identifier=0x1234)
         self.do_check(pkg)
-
 
 
 class PingReqTestCase(TestCase):

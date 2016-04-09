@@ -16,9 +16,9 @@ class MQTTException(Exception):
     def __str__(self):
         string = ""
         if self.errno:
-            string += "[%s]" % self.errno
+            string += "[%s] " % self.errno
         if self.msg:
-            string += " %s" % self.msg
+            string += "%s" % self.msg
         if not string and self.exception:
             string = str(self.exception)
         return string
@@ -26,8 +26,7 @@ class MQTTException(Exception):
 
 class MQTTProtocolException(MQTTException):
     def get_nack(self):
-        if self.errno in [mqtt.CONNACK_ACCEPTED,
-                          mqtt.CONNACK_REFUSED_PROTOCOL_VERSION,
+        if self.errno in [mqtt.CONNACK_REFUSED_PROTOCOL_VERSION,  # mqtt.CONNACK_ACCEPTED,
                           mqtt.CONNACK_REFUSED_IDENTIFIER_REJECTED,
                           mqtt.CONNACK_REFUSED_SERVER_UNAVAILABLE,
                           mqtt.CONNACK_REFUSED_BAD_USERNAME_PASSWORD,
@@ -39,6 +38,7 @@ class MQTTProtocolException(MQTTException):
 
 class BaseMQTT(object):
     remaining_length_fixed = None
+    auto_pack_identifier = False
 
     def __init__(self, ctl):
         """
@@ -89,11 +89,13 @@ class BaseMQTT(object):
                             mqtt.PUBREL, mqtt.PUBCOMP,
                             mqtt.SUBACK, mqtt.UNSUBACK,
                             mqtt.PUBLISH]:
+                if self.ctl in [mqtt.SUBSCRIBE, mqtt.UNSUBSCRIBE]:
+                    self._pkgID = random.randint(1, 0xffff)
+                elif not(self.ctl == mqtt.PUBLISH and self.QoS == MQTT_QoS0):
+                    if self.auto_pack_identifier:
+                        self._pkgID = random.randint(1, 0xffff)
+            elif self.auto_pack_identifier:
                 self._pkgID = random.randint(1, 0xffff)
-                if self.ctl == mqtt.PUBLISH and self.QoS == 0:
-                    self._pkgID = None  # TODO check possible error
-                elif self.ctl not in [mqtt.SUBSCRIBE, mqtt.UNSUBSCRIBE]:
-                    self._pkgID = None  # TODO check possible error
         return self._pkgID
 
     def set_pack_identifier(self, pkg_id):
@@ -195,7 +197,7 @@ class MQTTEmpty(BaseMQTT):
     remaining_length_fixed = int('00000000', 2)
 
     def set_flags(self, *args, **kwargs):
-        pass
+        return
 
     def get_payload(self):
         return ""

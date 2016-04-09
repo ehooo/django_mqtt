@@ -134,6 +134,66 @@ class TopicModelsTestCase(TestCase):
         self.assertRaises(ValidationError, Topic.objects.create, name='/')
         self.assertRaises(ValidationError, Topic.objects.create, name='')
 
+    def test_iterator(self):
+        topics = {
+            '/+/test': ['/me/test', '/ok/test'],
+            '/test/+': ['/test/test', '/test/me'],
+            '/+': ['/test', '/alone', '/asdf'],
+            '#': ['$SYS', '/test/not/match', 'match']
+        }
+        for wild in topics:
+            Topic.objects.create(name=wild)
+            for topic in topics[wild]:
+                Topic.objects.create(name=topic)
+        topic = Topic.objects.get(name='/+/test')
+        size = 0
+        for t in topic:
+            size += 1
+        self.assertEqual(size, 3)
+        topic = Topic.objects.get(name='/test/+')
+        size = 0
+        for t in topic:
+            size += 1
+        self.assertEqual(size, 2)
+        topic = Topic.objects.get(name='/+')
+        size = 0
+        for t in topic:
+            size += 1
+        self.assertEqual(size, 3)
+        topic = Topic.objects.get(name='#')
+        size = 0
+        for t in topic:
+            size += 1
+        self.assertEqual(size, 9)
+        topic = Topic.objects.create(name='/#')
+        size = 0
+        for t in topic:
+            size += 1
+        self.assertEqual(size, 8)
+        topic = Topic.objects.create(name='+')
+        size = 0
+        for t in topic:
+            size += 1
+        self.assertEqual(size, 1)
+        topic = Topic.objects.create(name='/+/not/#')
+        size = 0
+        for t in topic:
+            size += 1
+        self.assertEqual(size, 1)
+        Topic.objects.create(name='/test/1/not/2')
+        Topic.objects.create(name='/test/1/not/2/3')
+        Topic.objects.create(name='/test/1/not/2/3/4')
+        topic = Topic.objects.create(name='/test/+/not/#')
+        size = 0
+        for t in topic:
+            size += 1
+        self.assertEqual(size, 3)
+        topic = Topic.objects.create(name='/test/+/not/+/#')
+        size = 0
+        for t in topic:
+            size += 1
+        self.assertEqual(size, 2)
+
 
 class ClientIdModelsTestCase(TestCase):
     WRONG_CLIENT_ID_WILDCARD = ['012345678901234567890123456789', '/', '+', '#']
@@ -183,11 +243,11 @@ class ClientIdModelsTestCase(TestCase):
 
 class ACLModelsTestCase(TestCase):
     def setUp(self):
-        user_login = User.objects.create_user('test', 'test@test.com', 'test')
-        user_group = User.objects.create_user('test_group', 'test_group@test.com', 'test_group')
-        group = Group.objects.create(name='MQTT')
-        user_group.groups.add(group)
-        User.objects.create_superuser('admin', 'admin@test.com', 'admin')
+        self.user_login = User.objects.create_user('test', 'test@test.com', 'test')
+        self.user_group = User.objects.create_user('test_group', 'test_group@test.com', 'test_group')
+        self.group = Group.objects.create(name='MQTT')
+        self.user_group.groups.add(self.group)
+        self.admin = User.objects.create_superuser('admin', 'admin@test.com', 'admin')
         self.topic_public_publish, is_new = Topic.objects.get_or_create(name='/test/publisher/allow')
         self.topic_forbidden_publish, is_new = Topic.objects.get_or_create(name='/test/publisher/disallow')
         self.topic_private_publish, is_new = Topic.objects.get_or_create(name='/test/subscriber/login')
@@ -204,8 +264,8 @@ class ACLModelsTestCase(TestCase):
                                  acc=PROTO_MQTT_ACC_PUB)
         str(acl)
         unicode(acl)
-        acl.groups.add(group)
-        acl.users.add(user_login)
+        acl.groups.add(self.group)
+        acl.users.add(self.user_login)
         ACL.objects.create(
             allow=True, topic=self.topic_public_subs,
             acc=PROTO_MQTT_ACC_SUS)
@@ -215,11 +275,53 @@ class ACLModelsTestCase(TestCase):
         acl = ACL.objects.create(
             allow=True, topic=self.topic_private_subs,
             acc=PROTO_MQTT_ACC_SUS)
-        acl.groups.add(group)
-        acl.users.add(user_login)
+        acl.groups.add(self.group)
+        acl.users.add(self.user_login)
 
-    def test_wildcard_acl(self):
-        pass
+    def test_get_acl(self):
+        topic = Topic.objects.create(name=WILDCARD_MULTI_LEVEL)
+        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
+        topic = Topic.objects.create(name='/+')
+        acl_plus = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
+        self.assertEqual(ACL.get_acl('/test', PROTO_MQTT_ACC_SUS), acl_plus)
+        self.assertEqual(ACL.get_acl('/test/test', PROTO_MQTT_ACC_SUS), acl)
+        self.assertRaises(ValueError, ACL.get_acl, object)
+        self.assertEqual(acl > acl_plus, True)
+        self.assertEqual(acl_plus < acl, True)
+
+    def test_acl_get_default(self):
+        for us, ano in [(False, False), (True, False), (True, True)]:
+            settings.MQTT_ACL_ALLOW = us
+            settings.MQTT_ACL_ALLOW_ANONIMOUS = ano
+            allow = ACL.get_default(PROTO_MQTT_ACC_SUS)
+            self.assertEqual(allow, ano)
+            allow = ACL.get_default(PROTO_MQTT_ACC_SUS, self.user_login)
+            self.assertEqual(allow, us)
+        settings.MQTT_ACL_ALLOW = False
+        settings.MQTT_ACL_ALLOW_ANONIMOUS = False
+        topic = Topic.objects.create(name=WILDCARD_MULTI_LEVEL)
+        allow = ACL.get_default(PROTO_MQTT_ACC_SUS)
+        self.assertEqual(allow, False)
+
+        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
+        allow = ACL.get_default(PROTO_MQTT_ACC_SUS)
+        self.assertEqual(allow, True)
+        allow = ACL.get_default(PROTO_MQTT_ACC_SUS, self.user_login)
+        self.assertEqual(allow, True)
+        acl.users.add(self.user_login)
+        allow = ACL.get_default(PROTO_MQTT_ACC_SUS)
+        self.assertEqual(allow, False)
+        allow = ACL.get_default(PROTO_MQTT_ACC_SUS, self.user_login)
+        self.assertEqual(allow, True)
+        acl.password = '1234'
+        acl.save()
+        allow = ACL.get_default(PROTO_MQTT_ACC_SUS)
+        self.assertEqual(allow, False)
+        allow = ACL.get_default(PROTO_MQTT_ACC_SUS, self.user_login)
+        self.assertEqual(allow, True)
+        allow = ACL.get_default(PROTO_MQTT_ACC_SUS, password='1234')
+        self.assertEqual(allow, True)
+
 
 
 
