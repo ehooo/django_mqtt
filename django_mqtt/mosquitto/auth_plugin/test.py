@@ -1,6 +1,6 @@
 
 from django.contrib.auth.models import User, Group
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.core.urlresolvers import reverse
 from django.conf import settings
 
@@ -94,6 +94,26 @@ class AclTestCase(TestCase):
         acl.users.add(user_login)
         self.url_testing = reverse('mqtt_acl')
         self.client = Client()
+
+    @override_settings(MQTT_ACL_ALLOW=False)
+    def test_topic_not_allow(self):
+        response = self.client.post(self.url_testing,
+                                    {'username': 'test',
+                                     'acc': models.PROTO_MQTT_ACC_PUB,
+                                     'topic': '/no/exist/topic'})
+        no_exist = models.Topic.objects.filter(name='/no/exist/topic').count()
+        self.assertEqual(no_exist, 1)
+        self.assertEqual(response.status_code, 403)
+
+    @override_settings(MQTT_ACL_ALLOW=True)
+    def test_topic_not_allow(self):
+        response = self.client.post(self.url_testing,
+                                    {'username': 'test',
+                                     'acc': models.PROTO_MQTT_ACC_PUB,
+                                     'topic': '/no/exist/topic'})
+        no_exist = models.Topic.objects.filter(name='/no/exist/topic').count()
+        self.assertEqual(no_exist, 1)
+        self.assertEqual(response.status_code, 200)
 
     def test_no_topic(self):
         no_exist = models.Topic.objects.filter(name='/no/exist/topic').count()

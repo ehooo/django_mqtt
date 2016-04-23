@@ -70,7 +70,7 @@ if not os.environ.get('RUN_DB_SERVER', False):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+            'NAME': ':memory:' if DEBUG else os.path.join(BASE_DIR, 'db.sqlite3'),
         }
     }
 else:  # pragma: no cover
@@ -140,3 +140,38 @@ TEMPLATES = [
         },
     },
 ]
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
+        },
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        }
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'propagate': True,
+            'filters': ['require_debug_true']
+        },
+        'django_mqtt.server.service': {
+            'handlers': ['console'],
+            'level': 'INFO'
+        }
+    }
+}

@@ -1,6 +1,7 @@
 from django_mqtt.protocol import *
 import struct
 import random
+import logging as logger
 
 
 class MQTTException(Exception):
@@ -160,6 +161,9 @@ class BaseMQTT(object):
                         mqtt.PINGREQ, mqtt.PINGRESP, mqtt.DISCONNECT]:
             return ""
         raise NotImplemented  # pragma: no cover
+
+    def __str__(self):
+        return unicode(self).encode('latin-1')
 
     def __unicode__(self):
         msg = self.get_variable_header()
@@ -392,11 +396,10 @@ class Connect(BaseMQTT):
         padding = size + 2
         self.proto_level, self.conn_flags, self.keep_alive = struct.unpack_from("!BBH", body, padding)
         padding += 4
-        if not self.is_clean():
-            s = body[padding:]
-            self.client_id = get_string(body[padding:])
-            (size, ) = struct.unpack_from("!H", body, padding)
-            padding += 2 + size
+        s = body[padding:]
+        self.client_id = get_string(body[padding:])
+        (size, ) = struct.unpack_from("!H", body, padding)
+        padding += 2 + size
         if self.has_flag():
             self._topic = get_string(body[padding:])
             (size, ) = struct.unpack_from("!H", body, padding)
@@ -415,8 +418,9 @@ class Connect(BaseMQTT):
             padding += 2
             self.auth_password = body[padding: padding+size]
             padding += size
+
         if len(body) > padding:
-            raise MQTTException('Body too big')
+            raise MQTTException('Body too big size(%s) expected(%s)' % (len(body), padding))
 
     def check_integrity(self):
         super(Connect, self).check_integrity()
@@ -782,10 +786,14 @@ def parse_raw(connection):
         cls.parse_body(body)
         return cls
     except struct.error as s_ex:
+        logger.exception(s_ex)
         raise MQTTException('Invalid format', exception=s_ex)
     except UnicodeDecodeError as u_ex:
+        logger.exception(u_ex)
         raise MQTTException('Invalid encode', exception=u_ex)
     except ValueError as v_ex:
+        logger.exception(v_ex)
         raise MQTTException('Invalid value', exception=v_ex)
     except TypeError as t_ex:
+        logger.exception(t_ex)
         raise MQTTException('Invalid type', exception=t_ex)

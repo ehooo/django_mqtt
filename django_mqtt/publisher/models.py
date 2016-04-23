@@ -264,7 +264,7 @@ class Data(models.Model):
             cli.connect(self.client.server.host, self.client.server.port, self.client.keepalive)
             mqtt_pre_publish.send(sender=Data.__class__, client=self.client,
                                   topic=self.topic, payload=self.payload, qos=self.qos, retain=self.retain)
-            (rc, mid) = cli.publish(self.topic.name, self.payload, self.qos, self.retain)
+            (rc, mid) = cli.publish(self.topic.name, payload=self.payload, qos=self.qos, retain=self.retain)
             self.client.server.status = rc
             self.client.server.save()
             mqtt_publish.send(sender=Client.__class__, client=self.client, userdata=cli._userdata, mid=mid)

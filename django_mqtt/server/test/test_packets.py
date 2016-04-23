@@ -1,7 +1,3 @@
-from django.test import TestCase
-
-from django_mqtt.server.test_service import *
-from django_mqtt.server.test_models import *
 from django_mqtt.test_models import *
 from django_mqtt.server.packets import *
 from django_mqtt.protocol import *

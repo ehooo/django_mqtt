@@ -14,6 +14,7 @@ import errno
 import ssl
 import sys
 import re
+import os
 
 
 naiveip_re = re.compile(r"""^(?:
@@ -159,8 +160,8 @@ class Command(BaseCommand):
         bind_socket.listen(backlog)
 
         forks = []
-        try:
-            while self.is_running:
+        while self.is_running:
+            try:
                 sock, from_addr = bind_socket.accept()
                 conn = sock
                 if context:
@@ -172,5 +173,9 @@ class Command(BaseCommand):
                     forks.append(th)
                 else:
                     th.run()
-        finally:
-            pass
+            except Exception as ex:
+                import traceback
+                self.stdout.write(traceback.format_exc())
+                self.stdout.write(str(ex))
+            finally:
+                pass

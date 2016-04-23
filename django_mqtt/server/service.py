@@ -7,7 +7,6 @@ from django.contrib.auth import authenticate
 from django.db import transaction
 from django.conf import settings
 
-from datetime import datetime
 from threading import Thread
 import logging
 import socket
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class MqttServiceThread(Thread):
-    def __init__(self, connection, publish_callback=None,*args, **kwargs):
+    def __init__(self, connection, publish_callback=None, *args, **kwargs):
         if not isinstance(connection, socket.socket):
             raise ValueError('socket expected')
         super(MqttServiceThread, self).__init__(*args, **kwargs)
@@ -31,6 +30,8 @@ class MqttServiceThread(Thread):
     def next_packet(self):
         pkg = parse_raw(self._connection)
         pkg.check_integrity()
+        if self._session:
+            self._session.ping()
         return pkg
 
     def notify_publish(self, publish_pk):
@@ -52,7 +53,17 @@ class MqttServiceThread(Thread):
         publish_pkg = Publish(topic=topic, msg=msg, qos=qos, pack_identifier=pack_identifier)
         if qos != MQTT_QoS0:
             self._last_publication = publish_pkg
-        self._connection.sendall(unicode(publish_pkg))
+        self._connection.sendall(str(publish_pkg))
+
+    def stop(self):
+        self.disconnect = True
+        if self._session:
+            self._session = None
+        if self._connection:
+            self._connection.setblocking(0)
+            self._connection.shutdown(socket.SHUT_RDWR)
+            self._connection.close()
+        self._connection = None
 
     def run(self):
         self.disconnect = False
@@ -63,7 +74,6 @@ class MqttServiceThread(Thread):
             self.process_new_connection(conn_pkg)
             while not self.disconnect:
                 pkg = self.next_packet()
-                self._session.ping()
                 if isinstance(pkg, Connect):
                     self.process_new_connection(pkg)
                 elif isinstance(pkg, ConnAck):
@@ -82,7 +92,7 @@ class MqttServiceThread(Thread):
                     if self._last_publication.QoS != MQTT_QoS2:
                         raise MQTTException(_('Packer QoS2 not expected'))
                     resp = PubRel(pack_identifier=pkg.pack_identifier)
-                    self._connection.sendall(unicode(resp))
+                    self._connection.sendall(str(resp))
                 elif isinstance(pkg, PubRel):
                     raise MQTTException(_('Packer QoS2 not expected'))
                 elif isinstance(pkg, PubComp):
@@ -101,12 +111,11 @@ class MqttServiceThread(Thread):
                     raise MQTTException(_('Client cannot use UnsubAck packer'))
                 elif isinstance(pkg, PingReq):
                     resp = PingResp()
-                    self._connection.sendall(unicode(resp))
+                    self._connection.sendall(str(resp))
                 elif isinstance(pkg, PingResp):
                     raise MQTTException(_('Client cannot use PingResp packer'))
                 elif isinstance(pkg, Disconnect):
-                    self._session.active = False
-                    self._session.save()
+                    self._session.disconnect()
                     self.disconnect = True
             # TODO manager timeoout or disconecctions
         except MQTTProtocolException as ex:
@@ -118,52 +127,43 @@ class MqttServiceThread(Thread):
             logging.warning("%s" % ex)
             self.disconnect = True
         finally:
-            if self.disconnect:
-                self._session = None
-                self._connection.shutdown(socket.SHUT_RDWR)
-                self._connection.close()
+            self.stop()
 
     def process_unsubscription(self, unsubscription_pkg):
+        logger.info('%(client_id)s unsubscription %(topics)s' % {
+            'client_id': self._session.client_id,
+            'topics': unsubscription_pkg.topic_list
+        })
         resp = UnsubAck(pack_identifier=unsubscription_pkg.pack_identifier)
         for topic in unsubscription_pkg.topic_list:
-            subs = self._session.subscriptions.filter(topic__name=topic)
-            if subs.count() > 0:
-                self._session.subscriptions.remove(subs)
-            else:
-                self._session.unsubscriptions.add(subs)
-        self._connection.sendall(unicode(resp))
+            self._session.unsubscribe(topic)
+        self._connection.sendall(str(resp))
 
     def process_subscription(self, subscription_pkg):
         resp = SubAck(pack_identifier=subscription_pkg.pack_identifier)
         for topic in subscription_pkg.topic_list:
             qos = subscription_pkg.topic_list[topic]
+            subs = None
+            code = MQTT_SUBACK_FAILURE
             try:
                 topic, new_topic = Topic.objects.get_or_create(name=topic)
                 acl = ACL.get_acl(topic, PROTO_MQTT_ACC_SUS)
                 if self._session and acl and acl.has_permission(user=self._session.user):
                     if qos is MQTT_QoS0:
                         subs, new_subs = Channel.objects.get_or_create(topic=topic, qos=qos)
-                        self._session = Session()
-                        self._session.subscriptions.add(subs)
-                        self._session.unsubscriptions.remove(topic)
-                        resp.add_response(MQTT_SUBACK_QoS0)
+                        code=MQTT_SUBACK_QoS0
                     elif qos is MQTT_QoS1:
                         subs, new_subs = Channel.objects.get_or_create(topic=topic, qos=qos)
-                        self._session.subscriptions.add(subs)
-                        self._session.unsubscriptions.remove(topic)
-                        resp.add_response(MQTT_SUBACK_QoS1)
+                        code=MQTT_SUBACK_QoS1
                     elif qos is MQTT_QoS2:
                         subs, new_subs = Channel.objects.get_or_create(topic=topic, qos=qos)
-                        self._session.subscriptions.add(subs)
-                        self._session.unsubscriptions.remove(topic)
-                        resp.add_response(MQTT_SUBACK_QoS2)
-                    else:
-                        resp.add_response(MQTT_SUBACK_FAILURE)
-                else:
-                    resp.add_response(MQTT_SUBACK_FAILURE)
-            except ValidationError:
-                resp.add_response(MQTT_SUBACK_FAILURE)
-        self._connection.sendall(unicode(resp))
+                        code=MQTT_SUBACK_QoS2
+            except ValidationError as ex:
+                logger.exception(ex)
+            if subs:
+                self._session.subscribe(channel=subs)
+            resp.add_response(code)
+        self._connection.sendall(str(resp))
 
     @transaction.atomic
     def process_new_publish_qos2(self, publish_pkg, channel):
@@ -173,7 +173,7 @@ class MqttServiceThread(Thread):
             publication.message = publish_pkg.msg
             publication.save()
             resp = PubRec(pack_identifier=publish_pkg.pack_identifier)
-            self._connection.sendall(unicode(resp))
+            self._connection.sendall(str(resp))
 
             pkg = self.next_packet()
             if not isinstance(pkg, PubRel):
@@ -185,7 +185,7 @@ class MqttServiceThread(Thread):
 
             transaction.commit()
             resp = PubComp(pack_identifier=pkg.pack_identifier)
-            self._connection.sendall(unicode(resp))
+            self._connection.sendall(str(resp))
             if self._publish_callback:
                 self._publish_callback(publication.pk)
         except MQTTException as ex:
@@ -214,7 +214,7 @@ class MqttServiceThread(Thread):
             if self._publish_callback:
                 self._publish_callback(publication.pk)
             resp = PubAck(pack_identifier=publish_pkg.pack_identifier)
-            self._connection.sendall(unicode(resp))
+            self._connection.sendall(str(resp))
         elif publish_pkg.QoS == MQTT_QoS2:
             self.process_new_publish_qos2(publish_pkg, channel)
 
@@ -327,11 +327,12 @@ class MqttServiceThread(Thread):
             else:
                 conn_ack.set_flags(sp=True)
             conn_ack.ret_code = mqtt.CONNACK_ACCEPTED
-            logger.info(_('New connection accepted id:%(client_id)s user:%(user)s') %
-                        {'client_id': cli_id, 'user': user})
+            self._connection.settimeout(conn_pkg.keep_alive)
+            logger.info(_('New connection accepted id:%(client_id)s user:%(user)s "keep alive":%(keep_alive)s') %
+                        {'client_id': cli_id, 'user': user, 'keep_alive': conn_pkg.keep_alive})
         except MQTTProtocolException as ex:
             conn_ack = ex.get_nack()
             raise MQTTException(exception=ex)
         finally:
             if conn_ack:
-                self._connection.sendall(unicode(conn_ack))
+                self._connection.sendall(str(conn_ack))
