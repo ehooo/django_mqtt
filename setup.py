@@ -20,8 +20,5 @@ setup(name='django-mqtt',
           "Programming Language :: Python :: 2.7",
       ],
       packages=[
-          'django_mqtt',
-          'django_mqtt.mosquitto',
-          'django_mqtt.publisher',
-          'django_mqtt.server',
+          'django_mqtt.*',
       ])
