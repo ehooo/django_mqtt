@@ -25,9 +25,5 @@ setup(name='django-mqtt',
           'django_mqtt.mosquitto.auth_plugin',
           'django_mqtt.publisher',
           'django_mqtt.publisher.management',
-          'django_mqtt.publisher.management.commands',
-          'django_mqtt.server',
-          'django_mqtt.server.test',
-          'django_mqtt.server.management',
-          'django_mqtt.server.management.commands',
+          'django_mqtt.publisher.management.commands'
       ])

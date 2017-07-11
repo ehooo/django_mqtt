@@ -3,7 +3,6 @@ Django-MQTT [![Build Status](https://travis-ci.org/ehooo/django_mqtt.svg?branch=
 It is a django module that allow your:
 - Mosquito Auth configured with [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug)
 - Automatic MQTT replay
-- MQTT server
 
 
 Install

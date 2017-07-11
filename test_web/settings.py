@@ -167,10 +167,6 @@ LOGGING = {
             'handlers': ['console'],
             'propagate': True,
             'filters': ['require_debug_true']
-        },
-        'django_mqtt.server.service': {
-            'handlers': ['console'],
-            'level': 'INFO'
         }
     }
 }
