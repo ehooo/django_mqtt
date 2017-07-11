@@ -106,7 +106,7 @@ class AclTestCase(TestCase):
         self.assertEqual(response.status_code, 403)
 
     @override_settings(MQTT_ACL_ALLOW=True)
-    def test_topic_not_allow(self):
+    def test_topic_allow(self):
         response = self.client.post(self.url_testing,
                                     {'username': 'test',
                                      'acc': models.PROTO_MQTT_ACC_PUB,
