@@ -36,7 +36,6 @@ INSTALLED_APPS = [
     'django_extensions',
     'django_mqtt',
     'django_mqtt.mosquitto.auth_plugin',
-    'django_mqtt.server',
     'django_mqtt.publisher',
 ]
 FIXTURE_DIRS = [

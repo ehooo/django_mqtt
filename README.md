@@ -18,7 +18,6 @@ INSTALLED_APPS = (
   'django_mqtt',
   'django_mqtt.mosquitto.auth_plugin',
   'django_mqtt.publisher',
-  'django_mqtt.server',
   ...
 )
 
@@ -26,7 +25,7 @@ INSTALLED_APPS = (
 MQTT_CERTS_ROOT = /path/to/private/certs/storage
 # Test Example: MQTT_CERTS_ROOT = os.path.join(BASE_DIR, 'private')
 
-# Used for 'django_mqtt' if 'django_mqtt.server' or 'django_mqtt.mosquitto.auth_plugin' is Installed 
+# Used for 'django_mqtt' if 'django_mqtt.mosquitto.auth_plugin' is Installed
 # Optional MQTT_ACL_ALLOW indicated if must allow topic not asigned for the user 
 MQTT_ACL_ALLOW = False
 # Optional MQTT_ACL_ALLOW_ANONIMOUS indicated if must allow topic not valid users

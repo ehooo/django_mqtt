@@ -74,6 +74,7 @@ WILDCARD_SINGLE_LEVEL = '+'
 WILDCARD_MULTI_LEVEL = '#'
 MQTT_NONE_CHAR = '\x00\x00'
 
+
 def remaining2list(remain, exception=False):
     bytes_remain = []
     if not exception:
