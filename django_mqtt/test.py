@@ -164,4 +164,3 @@ class ProtocolTestCase(TestCase):
         self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xFF', exception=True)
         self.assertRaises(TypeError, get_string, None, exception=True)
         self.assertRaises(TypeError, get_string, object, exception=True)
-

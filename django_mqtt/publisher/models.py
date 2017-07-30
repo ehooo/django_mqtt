@@ -208,7 +208,7 @@ class Client(models.Model):
             if not self.clean_session and empty_client_id:
                 client_id = None
         cli = mqtt.Client(client_id, clean, protocol=self.server.protocol)
-        if self.server.secure:  # TODO use it! pragma: no cover
+        if self.server.secure:
             tls_args = {
                 'cert_reqs': self.server.secure.cert_reqs,
                 'tls_version': self.server.secure.tls_version,

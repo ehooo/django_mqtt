@@ -1,6 +1,6 @@
 
 from django_mqtt.publisher.models import *
-from  django.core.files import File
+from django.core.files import File
 from django.test import TestCase
 import os
 

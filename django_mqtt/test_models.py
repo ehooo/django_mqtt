@@ -207,7 +207,7 @@ class ClientIdModelsTestCase(TestCase):
 
     def test_wrong_client_id(self):
         if not hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') or\
-           not settings.MQTT_ALLOW_EMPTY_CLIENT_ID:  # pragma: no cover
+           not settings.MQTT_ALLOW_EMPTY_CLIENT_ID:
             self.assertRaises(ValidationError, ClientId.objects.create, name='')
         for client_id in self.WRONG_CLIENT_ID_WILDCARD:
             self.assertRaises(ValidationError, ClientId.objects.create, name=client_id)
@@ -248,35 +248,17 @@ class ACLModelsTestCase(TestCase):
         self.group = Group.objects.create(name='MQTT')
         self.user_group.groups.add(self.group)
         self.admin = User.objects.create_superuser('admin', 'admin@test.com', 'admin')
-        self.topic_public_publish, is_new = Topic.objects.get_or_create(name='/test/publisher/allow')
-        self.topic_forbidden_publish, is_new = Topic.objects.get_or_create(name='/test/publisher/disallow')
-        self.topic_private_publish, is_new = Topic.objects.get_or_create(name='/test/subscriber/login')
-        self.topic_public_subs, is_new = Topic.objects.get_or_create(name='/test/subscriber/allow')
-        self.topic_forbidden_subs, is_new = Topic.objects.get_or_create(name='/test/subscriber/disallow')
-        self.topic_private_subs, is_new = Topic.objects.get_or_create(name='/test/subscriber/login')
-        ACL.objects.create(
-            allow=True, topic=self.topic_public_publish,
-            acc=PROTO_MQTT_ACC_PUB)
-        ACL.objects.create(
-            allow=False, topic=self.topic_forbidden_publish,
-            acc=PROTO_MQTT_ACC_PUB)
-        acl = ACL.objects.create(allow=True, topic=self.topic_private_publish,
-                                 acc=PROTO_MQTT_ACC_PUB)
-        str(acl)
-        unicode(acl)
-        acl.groups.add(self.group)
-        acl.users.add(self.user_login)
-        ACL.objects.create(
-            allow=True, topic=self.topic_public_subs,
-            acc=PROTO_MQTT_ACC_SUS)
-        ACL.objects.create(
-            allow=False, topic=self.topic_forbidden_subs,
-            acc=PROTO_MQTT_ACC_SUS)
-        acl = ACL.objects.create(
-            allow=True, topic=self.topic_private_subs,
-            acc=PROTO_MQTT_ACC_SUS)
-        acl.groups.add(self.group)
-        acl.users.add(self.user_login)
+
+    def test_string(self):
+        topic = Topic.objects.create(name='/test')
+        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
+        self.assertEqual(str(acl), "ACL Suscriptor for /test")
+        self.assertEqual(unicode(acl), u"ACL Suscriptor for /test")
+
+    def test_get_acl_no_candidate(self):
+        Topic.objects.create(name='/test')
+        self.assertIsNone(ACL.get_acl('/test', PROTO_MQTT_ACC_SUS))
+        self.assertIsNone(ACL.get_acl('/test', PROTO_MQTT_ACC_PUB))
 
     def test_get_acl(self):
         topic = Topic.objects.create(name=WILDCARD_MULTI_LEVEL)
@@ -321,7 +303,3 @@ class ACLModelsTestCase(TestCase):
         self.assertEqual(allow, True)
         allow = ACL.get_default(PROTO_MQTT_ACC_SUS, password='1234')
         self.assertEqual(allow, True)
-
-
-
-

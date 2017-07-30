@@ -18,7 +18,7 @@ class Auth(View):
 
     def post(self, request, *args, **kwargs):
         data = {}
-        if hasattr(request, 'POST'):  # pragma: no cover
+        if hasattr(request, 'POST'):
             data = request.POST
         elif hasattr(request, 'DATA'):  # pragma: no cover
             data = request.DATA
@@ -38,7 +38,7 @@ class Superuser(View):
 
     def post(self, request, *args, **kwargs):
         data = {}
-        if hasattr(request, 'POST'):  # pragma: no cover
+        if hasattr(request, 'POST'):
             data = request.POST
         elif hasattr(request, 'DATA'):  # pragma: no cover
             data = request.DATA
@@ -60,7 +60,7 @@ class Acl(View):
 
     def post(self, request, *args, **kwargs):
         data = {}
-        if hasattr(request, 'POST'):  # pragma: no cover
+        if hasattr(request, 'POST'):
             data = request.POST
         elif hasattr(request, 'DATA'):  # pragma: no cover
             data = request.DATA
