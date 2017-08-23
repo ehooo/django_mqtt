@@ -1,12 +1,11 @@
 from django.http import HttpResponse, HttpResponseForbidden
 from django.views.generic.base import View
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.models import User
-from django.db.models import Q
 from django.contrib.auth import authenticate
+from django.contrib.auth import get_user_model
 from django.conf import settings
 
-from django_mqtt.models import *
+from django_mqtt.models import ACL, Topic
 
 
 class Auth(View):
@@ -42,11 +41,13 @@ class Superuser(View):
             data = request.POST
         elif hasattr(request, 'DATA'):  # pragma: no cover
             data = request.DATA
+
+        user_model = get_user_model()
         try:
-            user = User.objects.get(username=data.get('username'), is_active=True)
+            user = user_model.objects.get(username=data.get('username'), is_active=True)
             if user.is_superuser:
                 return HttpResponse('')
-        except User.DoesNotExist:
+        except user_model.DoesNotExist:
             pass
         return HttpResponseForbidden('')
 
@@ -71,9 +72,9 @@ class Acl(View):
         topic, new_topic = Topic.objects.get_or_create(name=data.get('topic', '#'))
         acc = data.get('acc', None)
         user = None
-        user_ = User.objects.filter(username=data.get('username'), is_active=True)
-        if user_.count() > 0:
-            user = user_[0]
+        user_ = get_user_model().objects.filter(username=data.get('username'), is_active=True)
+        if user_.exists():
+            user = user_.latest('pk')
 
         acl = None
         if not new_topic:
