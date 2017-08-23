@@ -32,7 +32,7 @@ class SecureSave(models.Model):
 
 
 class ClientId(SecureSave):
-    name = models.CharField(max_length=23, db_index=True, blank=True,
+    name = models.CharField(max_length=23, db_index=True, blank=True, unique=True,
                             validators=[ClientIdValidator(valid_empty=ALLOW_EMPTY_CLIENT_ID)])
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True)
     groups = models.ManyToManyField(Group, blank=True)

@@ -3,9 +3,9 @@ from django.views.generic.base import View
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
-from django.conf import settings
 
-from django_mqtt.models import ACL, Topic
+from django_mqtt.models import Topic, ClientId, ACL
+from django_mqtt.mosquitto.auth_plugin.auth import has_permission
 
 
 class Auth(View):
@@ -16,14 +16,37 @@ class Auth(View):
         return super(Auth, self).dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        """ HTTP response 200 to allow, 403 in other case
+        Access if exist ACL with:
+            - ACC, TOPIC and PASSWORD not matter the user
+            - USERNAME and PASSWORD for an existing active user and with topic and acc
+
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
         data = {}
         if hasattr(request, 'POST'):
             data = request.POST
         elif hasattr(request, 'DATA'):  # pragma: no cover
             data = request.DATA
 
-        user = authenticate(username=data.get('username'), password=data.get('password'))
-        if not user or not user.is_active:
+        topics = Topic.objects.filter(name=data.get('topic'))
+        acc = data.get('acc')
+        allow = False
+        if topics.exists() and acc:
+            topic = topics.get()
+            acls = ACL.objects.filter(acc=data.get('acc'), topic=topic,
+                                      password__isnull=False, password=data.get('password'))
+            if acls.exists():
+                allow = True
+        if not allow:
+            user = authenticate(username=data.get('username'), password=data.get('password'))
+            if user and user.is_active:
+                allow = has_permission(user, data.get('topic', '#'), data.get('acc'))
+
+        if not allow:
             return HttpResponseForbidden('')
         return HttpResponse('')
 
@@ -36,6 +59,12 @@ class Superuser(View):
         return super(Superuser, self).dispatch(request, *args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        """ HTTP response 200 to user exist and is_superuser, 403 in other case
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
         data = {}
         if hasattr(request, 'POST'):
             data = request.POST
@@ -60,40 +89,34 @@ class Acl(View):
         return super(Acl, self).dispatch(*args, **kwargs)
 
     def post(self, request, *args, **kwargs):
+        """ HTTP response 200 to allow, 403 in other case
+        see function django_mqtt.mosquitto.auth_plugin.utils.has_permission
+
+        :param request:
+        :param args:
+        :param kwargs:
+        :return:
+        """
         data = {}
         if hasattr(request, 'POST'):
             data = request.POST
         elif hasattr(request, 'DATA'):  # pragma: no cover
             data = request.DATA
-        allow = False
-        if hasattr(settings, 'MQTT_ACL_ALLOW'):
-            allow = settings.MQTT_ACL_ALLOW
 
-        topic, new_topic = Topic.objects.get_or_create(name=data.get('topic', '#'))
-        acc = data.get('acc', None)
         user = None
-        user_ = get_user_model().objects.filter(username=data.get('username'), is_active=True)
-        if user_.exists():
-            user = user_.latest('pk')
+        users = get_user_model().objects.filter(username=data.get('username'), is_active=True)
+        if users.exists():
+            user = users.latest('pk')
 
-        acl = None
-        if not new_topic:
-            try:
-                acl = ACL.objects.get(acc=acc, topic=topic)  # ACL only count have one or none
-            except ACL.DoesNotExist:
-                pass
+        topic = None
+        topics = Topic.objects.filter(name=data.get('topic', '#'))
+        if topics.exists():
+            topic = topics.get()
 
-        if acl is None:
-            allow = ACL.get_default(acc=acc, user=user)
-            # TODO search best candidate
-
-        if acl:
-            allow = acl.has_permission(user=user)
-
-        if allow and hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
-            if user is None:
-                allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
-
-        if not allow:
+        clientid = None
+        clientids = ClientId.objects.filter(name=data.get('clientid'))
+        if clientids.exists():
+            clientid = clientids.get()
+        if not has_permission(user, topic, acc=data.get('acc'), clientid=clientid):
             return HttpResponseForbidden('')
         return HttpResponse('')
