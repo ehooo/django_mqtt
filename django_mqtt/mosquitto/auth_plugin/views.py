@@ -4,7 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 
-from django_mqtt.models import Topic, ClientId, ACL
+from django_mqtt.models import Topic, ClientId, ACL, PROTO_MQTT_ACC
 from django_mqtt.mosquitto.auth_plugin.auth import has_permission
 
 
@@ -33,18 +33,21 @@ class Auth(View):
             data = request.DATA
 
         topics = Topic.objects.filter(name=data.get('topic'))
-        acc = data.get('acc')
+        try:
+            acc = int(data.get('acc', None))
+        except:
+            acc = None
         allow = False
-        if topics.exists() and acc:
+        if topics.exists() and acc in dict(PROTO_MQTT_ACC).keys():
             topic = topics.get()
-            acls = ACL.objects.filter(acc=data.get('acc'), topic=topic,
+            acls = ACL.objects.filter(acc=acc, topic=topic,
                                       password__isnull=False, password=data.get('password'))
             if acls.exists():
                 allow = True
         if not allow:
             user = authenticate(username=data.get('username'), password=data.get('password'))
             if user and user.is_active:
-                allow = has_permission(user, data.get('topic', '#'), data.get('acc'))
+                allow = has_permission(user, data.get('topic', '#'), acc)
 
         if not allow:
             return HttpResponseForbidden('')
@@ -117,6 +120,12 @@ class Acl(View):
         clientids = ClientId.objects.filter(name=data.get('clientid'))
         if clientids.exists():
             clientid = clientids.get()
-        if not has_permission(user, topic, acc=data.get('acc'), clientid=clientid):
+
+        try:
+            acc = int(data.get('acc', None))
+        except:
+            acc = None
+
+        if not has_permission(user, topic, acc=acc, clientid=clientid):
             return HttpResponseForbidden('')
         return HttpResponse('')

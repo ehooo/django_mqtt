@@ -200,8 +200,6 @@ class ACL(models.Model):
     groups = models.ManyToManyField(Group, blank=True)
     password = models.CharField(max_length=512, blank=True, null=True,
                                 help_text='Only valid for connect')
-    only_username = models.NullBooleanField(default=None,
-                                            help_text='Only valid for connect')
 
     class Meta:
         unique_together = ('topic', 'acc')
@@ -221,8 +219,14 @@ class ACL(models.Model):
                 allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
         try:
             broadcast_topic = Topic.objects.get(name=WILDCARD_MULTI_LEVEL)
-            broadcast = cls.objects.get(topic=broadcast_topic, acc=acc)
-            allow = broadcast.has_permission(user=user, password=password)
+            broadcast = cls.objects.filter(topic=broadcast_topic)
+            if acc in dict(PROTO_MQTT_ACC).keys():
+                if broadcast.filter(acc=acc).exists():
+                    broadcast_acl = broadcast.get(acc=acc)
+                    allow = broadcast_acl.has_permission(user=user, password=password)
+            else:
+                for acl in broadcast:
+                    allow &= acl.has_permission(user=user, password=password)
         except cls.DoesNotExist:
             pass
         except Topic.DoesNotExist:
@@ -255,7 +259,7 @@ class ACL(models.Model):
         return min(candidates)
 
     def is_public(self):
-        return self.users.exists() and self.groups.exists() and not self.password
+        return self.users.count() == 0 and self.groups.count() == 0 and not self.password
 
     def has_permission(self, user=None, password=None):
         allow = False

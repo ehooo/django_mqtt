@@ -1,5 +1,5 @@
 
-from django_mqtt.models import ACL
+from django_mqtt.models import ACL, PROTO_MQTT_ACC
 
 
 def has_permission(user, topic, acc=None, clientid=None):
@@ -19,11 +19,14 @@ def has_permission(user, topic, acc=None, clientid=None):
         return False
 
     acls = ACL.objects.filter(topic__name=topic)
+    if acc not in dict(PROTO_MQTT_ACC).keys():
+        acc = None
+
     if acc and acls.filter(acc=acc).exists():
-        acl = acls.filter(acc=acc).get()
-        allow = acl.has_permission(user=user)
+            acl = acls.filter(acc=acc).get()
+            allow = acl.has_permission(user=user)
     else:
-        allow = ACL.get_default(acc=acc, user=user)
+        allow = ACL.get_default(acc, user=user)
 
         # TODO search best candidate
 
