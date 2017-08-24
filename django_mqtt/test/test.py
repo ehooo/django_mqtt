@@ -1,5 +1,4 @@
 
-from django_mqtt.test_models import *
 from django_mqtt.validators import *
 from django_mqtt.protocol import *
 
