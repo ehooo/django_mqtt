@@ -214,9 +214,11 @@ class ACL(models.Model):
         allow = False
         if hasattr(settings, 'MQTT_ACL_ALLOW'):
             allow = settings.MQTT_ACL_ALLOW
-        if allow and hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
+        if hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
             if user is None or user.is_anonymous():
-                allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
+                allow = settings.MQTT_ACL_ALLOW_ANONIMOUS & allow
+                if not allow and not password:
+                    return allow
         try:
             broadcast_topic = Topic.objects.get(name=WILDCARD_MULTI_LEVEL)
             broadcast = cls.objects.filter(topic=broadcast_topic)

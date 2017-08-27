@@ -1,5 +1,5 @@
 
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import User
 from django.test import TestCase, Client, override_settings
 from django.core.urlresolvers import reverse
 

@@ -1,4 +1,3 @@
-
 from django_mqtt.publisher.models import *
 from django.core.files import File
 from django.test import TestCase
@@ -8,11 +7,17 @@ import os
 class PublishTestCase(TestCase):
     def setUp(self):
         self.ca_file = os.path.join(settings.BASE_DIR, 'test_web', 'ca', 'mosquitto.org.crt')
+        self.ca_cert_file = File(open(self.ca_file, 'rb'))
+
+    def tearDown(self):
+        if private_fs.exists('ca/mosquitto.org.crt'):
+            for sec_conf in SecureConf.objects.filter(ca_certs__isnull=False):
+                sec_conf.ca_certs.delete()
 
     def test_publish_secure(self):
         for (cert_req, c) in CERT_REQS:
             for (ver, v) in PROTO_SSL_VERSION:
-                SecureConf.objects.create(ca_certs=File(open(self.ca_file, 'rb')),
+                SecureConf.objects.create(ca_certs=self.ca_cert_file,
                                           cert_reqs=cert_req,
                                           tls_version=ver,
                                           ciphers='rsa')
@@ -23,7 +28,7 @@ class PublishTestCase(TestCase):
         # TODO test send using secure
 
     def test_publish_websock(self):
-        secure = SecureConf.objects.create(ca_certs=File(open(self.ca_file, 'rb')),
+        secure = SecureConf.objects.create(ca_certs=self.ca_cert_file,
                                            cert_reqs=ssl.CERT_REQUIRED,
                                            tls_version=ssl.PROTOCOL_TLSv1,
                                            ciphers=None)

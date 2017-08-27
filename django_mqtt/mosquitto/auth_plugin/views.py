@@ -46,8 +46,7 @@ class Auth(View):
                 allow = True
         if not allow:
             user = authenticate(username=data.get('username'), password=data.get('password'))
-            if user and user.is_active:
-                allow = has_permission(user, data.get('topic', '#'), acc)
+            allow = has_permission(user, data.get('topic', '#'), acc)
 
         if not allow:
             return HttpResponseForbidden('')
