@@ -127,11 +127,12 @@ from django_mqtt.models import PROTO_MQTT_ACC_SUS, PROTO_MQTT_ACC_PUB
 topic = Topic.objects.create(name='#')
 acl = ACL.objects.create(acc=PROTO_MQTT_ACC_PUB, topic=topic, allow=False)
 ```
-If you want that only one user or group could subscribe to any topic, you could add it:
+If you want that only one user or group could publish to any topic, you could add it:
 ```
-acl = ACL.objects.create(acc=PROTO_MQTT_ACC_PUB, topic=topic, allow=False)
+acl.allow=True
 acl.users.add(User.objects.get(username='admin')
 acl.groups.add(Group.objects.get(username='mqtt')
+acl.save()
 ```
 
 
