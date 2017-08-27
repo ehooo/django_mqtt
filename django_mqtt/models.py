@@ -1,19 +1,13 @@
-from datetime import datetime
-from datetime import timedelta
-import hashlib
 import six
 
 from django_mqtt.validators import *
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import Group
 from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
-from django.db.models import Q
 from django.db import models
-
 
 from django_mqtt.protocol import WILDCARD_SINGLE_LEVEL, WILDCARD_MULTI_LEVEL
 from django_mqtt.protocol import TOPIC_SEP, TOPIC_BEGINNING_DOLLAR
-
 
 PROTO_MQTT_ACC_SUS = 1
 PROTO_MQTT_ACC_PUB = 2
@@ -34,13 +28,13 @@ class SecureSave(models.Model):
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         self.full_clean()
         return super(SecureSave, self).save(force_insert=force_insert, force_update=force_update,
-                                          using=using, update_fields=update_fields)
+                                            using=using, update_fields=update_fields)
 
 
 class ClientId(SecureSave):
-    name = models.CharField(max_length=23, db_index=True, blank=True,
+    name = models.CharField(max_length=23, db_index=True, blank=True, unique=True,
                             validators=[ClientIdValidator(valid_empty=ALLOW_EMPTY_CLIENT_ID)])
-    users = models.ManyToManyField(User, blank=True)
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True)
     groups = models.ManyToManyField(Group, blank=True)
 
     def is_public(self):
@@ -154,6 +148,7 @@ class Topic(SecureSave):
         return True
 
     def get_candidates(self):
+        # TODO improve it
         candidates = Topic.objects.filter(dollar=self.is_dollar(), wildcard=False)
         init = Topic.objects.filter(dollar=self.is_dollar(), wildcard=False)
         topic = self.name
@@ -189,8 +184,10 @@ class Topic(SecureSave):
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):
-        self.wildcard = self.is_wildcard()
-        self.dollar = self.is_dollar()
+        if not update_fields or 'wildcard' in update_fields:
+            self.wildcard = self.is_wildcard()
+        if not update_fields or 'dollar' in update_fields:
+            self.dollar = self.is_dollar()
         return super(Topic, self).save(force_insert=force_insert, force_update=force_update,
                                        using=using, update_fields=update_fields)
 
@@ -199,12 +196,10 @@ class ACL(models.Model):
     allow = models.BooleanField(default=True)
     topic = models.ForeignKey(Topic)  # There is many of acc options by topic
     acc = models.IntegerField(choices=PROTO_MQTT_ACC)
-    users = models.ManyToManyField(User, blank=True)
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True)
     groups = models.ManyToManyField(Group, blank=True)
     password = models.CharField(max_length=512, blank=True, null=True,
                                 help_text='Only valid for connect')
-    only_username = models.NullBooleanField(default=None,
-                                            help_text='Only valid for connect')
 
     class Meta:
         unique_together = ('topic', 'acc')
@@ -219,13 +214,21 @@ class ACL(models.Model):
         allow = False
         if hasattr(settings, 'MQTT_ACL_ALLOW'):
             allow = settings.MQTT_ACL_ALLOW
-        if allow and hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
+        if hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
             if user is None or user.is_anonymous():
-                allow = settings.MQTT_ACL_ALLOW_ANONIMOUS
+                allow = settings.MQTT_ACL_ALLOW_ANONIMOUS & allow
+                if not allow and not password:
+                    return allow
         try:
             broadcast_topic = Topic.objects.get(name=WILDCARD_MULTI_LEVEL)
-            broadcast = cls.objects.get(topic=broadcast_topic, acc=acc)
-            allow = broadcast.has_permission(user=user, password=password)
+            broadcast = cls.objects.filter(topic=broadcast_topic)
+            if acc in dict(PROTO_MQTT_ACC).keys():
+                if broadcast.filter(acc=acc).exists():
+                    broadcast_acl = broadcast.get(acc=acc)
+                    allow = broadcast_acl.has_permission(user=user, password=password)
+            else:
+                for acl in broadcast:
+                    allow &= acl.has_permission(user=user, password=password)
         except cls.DoesNotExist:
             pass
         except Topic.DoesNotExist:
@@ -266,8 +269,9 @@ class ACL(models.Model):
             allow = self.allow
         else:
             if user:
-                if user in self.users.all() or\
-                   self.groups.filter(pk__in=user.groups.all().values_list('pk')).count() > 0:
+                if user in self.users.all():
+                    allow = self.allow
+                elif self.groups.filter(pk__in=user.groups.values_list('pk')).exists():
                     allow = self.allow
                 else:
                     allow = not self.allow

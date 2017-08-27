@@ -1,6 +1,6 @@
-
 from django.test import TestCase
 
+from django.contrib.auth.models import User
 from django_mqtt.models import *
 from django.core.exceptions import ValidationError
 
@@ -206,8 +206,8 @@ class ClientIdModelsTestCase(TestCase):
         ClientId.objects.create(name=gen_client_id())
 
     def test_wrong_client_id(self):
-        if not hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') or\
-           not settings.MQTT_ALLOW_EMPTY_CLIENT_ID:
+        if not hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') or \
+                not settings.MQTT_ALLOW_EMPTY_CLIENT_ID:
             self.assertRaises(ValidationError, ClientId.objects.create, name='')
         for client_id in self.WRONG_CLIENT_ID_WILDCARD:
             self.assertRaises(ValidationError, ClientId.objects.create, name=client_id)
@@ -287,7 +287,7 @@ class ACLModelsTestCase(TestCase):
 
         acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
         allow = ACL.get_default(PROTO_MQTT_ACC_SUS)
-        self.assertEqual(allow, True)
+        self.assertEqual(allow, False)
         allow = ACL.get_default(PROTO_MQTT_ACC_SUS, self.user_login)
         self.assertEqual(allow, True)
         acl.users.add(self.user_login)

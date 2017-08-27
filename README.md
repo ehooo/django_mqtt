@@ -110,6 +110,31 @@ and [configure_mosquitto_auth_plugin.sh](script/configure_mosquitto_auth_plugin.
 configure it for use [mosquitto-auth-plug](https://github.com/jpmens/mosquitto-auth-plug) with compiler configuration in
 [config.mk](script/config.mk) and mosquitto configuration server with [auth_plug.conf](script/auth_plug.conf).
 
+How Mosquitto Auth works ?
+==========================
+You could create the follow settings to set the default auth flow:
+```
+MQTT_ACL_ALLOW = False  # For allow auth users to any topic, False by defauld
+MQTT_ACL_ALLOW_ANONIMOUS = False # For allow anonimous users, False by defauld
+```
+The auth mechanism works based con ACL class.
+
+This mean that you could "bypass" the setting creating a wildcard topic (#).
+For example, if you want that all auth user could subscribe but not publish:
+```
+from django_mqtt.models import Topic, ACL
+from django_mqtt.models import PROTO_MQTT_ACC_SUS, PROTO_MQTT_ACC_PUB
+topic = Topic.objects.create(name='#')
+acl = ACL.objects.create(acc=PROTO_MQTT_ACC_PUB, topic=topic, allow=False)
+```
+If you want that only one user or group could publish to any topic, you could add it:
+```
+acl.allow=True
+acl.users.add(User.objects.get(username='admin')
+acl.groups.add(Group.objects.get(username='mqtt')
+acl.save()
+```
+
 
 MQTT Test Brokens
 =================
