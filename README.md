@@ -135,6 +135,30 @@ acl.groups.add(Group.objects.get(username='mqtt')
 acl.save()
 ```
 
+How user for publish data con MQTT server ?
+===========================================
+All this steps could be done by shell or by admin page
+1. Create a MQTT Server
+ ```
+ from django_mqtt.publisher.models import Server
+ mqtt_server = Server.objects.create(host='test.mosquitto.org')
+ ```
+2. Create a MQTT client
+ ```
+ from django_mqtt.publisher.models import Client
+ mqtt_client = Client.objects.create(server=mqtt_server)
+ ```
+3. Create a MQTT Topic
+ ```
+ from django_mqtt.models import Topic
+ mqtt_topic = Topic.objects.create(name='/django/MQTT')
+ ```
+4. Create a MQTT Data object
+ ```
+ from django_mqtt.publisher.models import Data
+ mqtt_data = Data.objects.create(client=mqtt_client, topic=mqtt_topic, payload='initial data')
+ mqtt_data.update_remote()  # Send/update data to MQTT server
+ ```
 
 MQTT Test Brokens
 =================
