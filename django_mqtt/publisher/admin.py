@@ -22,7 +22,7 @@ class AuthAdmin(admin.ModelAdmin):
 
 
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ('client_id', 'keepalive', 'clean_session')
+    list_display = ('client_id', 'keepalive', 'clean_session', 'server')
 
 
 class DataLogAdmin(admin.ModelAdmin):

@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
-from django.utils.translation import ugettext_lazy as _
 from django.core.management.base import BaseCommand, CommandError
+from django.utils.translation import ugettext_lazy as _
 
 from django_mqtt.publisher.models import Client
 
@@ -41,22 +41,22 @@ def on_log(client, userdata, level, buf):
 
 
 class Command(BaseCommand):
-    help = _('Connect with client as subscriber, for test proposed')
+    help = unicode(_('Connect with client as subscriber, for test proposed'))
 
     def add_arguments(self, parser):
         parser.add_argument('topic', action='store',
                             type=str, default=None,
-                            help=unicode(_('Sibcribe topic'))
+                            help=unicode(_('Subcribe topic'))
                             )
-        parser.add_argument('--id', nargs=1, action='store',
+        parser.add_argument('--id', action='store',
                             type=int, default=None, dest='id',
                             help=unicode(_('id from DB object'))
                             )
-        parser.add_argument('--qos', nargs=1, action='store',
+        parser.add_argument('--qos', action='store',
                             type=int, default=0, dest='qos',
                             help=unicode(_('Quality of Service'))
                             )
-        parser.add_argument('--client_id', nargs=1, action='store',
+        parser.add_argument('--client_id', action='store',
                             type=str, default=None, dest='client_id',
                             help=unicode(_('client_id for broken'))
                             )
@@ -64,23 +64,23 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if not options['topic']:
             raise CommandError(unicode(_('Topic requiered and must be only one')))
-        filter = {}
-        id = options['id']
-        if options['id'] is None:
+        apply_filter = {}
+        db_client_id = options['id']
+        if db_client_id is None:
             if options['client_id']:
-                filter['client_id'] = options['client_id']
-            clients = Client.objects.filter(**filter)
+                apply_filter['client_id'] = options['client_id']
+            clients = Client.objects.filter(**apply_filter)
             if clients.count() == 1:
-                id = clients.all()[0].pk
+                db_client_id = clients.all()[0].pk
             else:
                 if clients.all().count() == 0:
                     raise CommandError(unicode(_('No client on DB')))
                 print 'id -> client'
                 for obj in clients.all():
-                    print obj.pk, '->', obj
-                id = input("Select id from DB: ")
+                    print obj.pk, '\t->', obj
+                db_client_id = input("Select id from DB: ")
         try:
-            obj = Client.objects.get(pk=id)
+            obj = Client.objects.get(pk=db_client_id)
             cli = obj.get_mqtt_client()
 
             cli.on_connect = on_connect
@@ -96,4 +96,3 @@ class Command(BaseCommand):
             cli.disconnect()
         except Client.DoesNotExist:
             raise CommandError(unicode(_('Client not exist')))
-
