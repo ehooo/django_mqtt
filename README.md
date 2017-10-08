@@ -160,6 +160,23 @@ All this steps could be done by shell or by admin page
  mqtt_data.update_remote()  # Send/update data to MQTT server
  ```
 
+# How to update data from remote MQTT?
+1. Create a MQTT Server
+ ```
+ from django_mqtt.publisher.models import Server
+ mqtt_server = Server.objects.create(host='test.mosquitto.org')
+ ```
+2. Create a MQTT client
+ ```
+ from django_mqtt.publisher.models import Client
+ mqtt_client = Client.objects.create(server=mqtt_server)
+ ```
+3. Run command mqtt_updater
+ ```
+ python manage.py mqtt_updater /topic/#
+ ```
+
+
 MQTT Test Brokens
 =================
 You can use the [mosquitto test server](http://test.mosquitto.org/) ```test.mosquitto.org```.

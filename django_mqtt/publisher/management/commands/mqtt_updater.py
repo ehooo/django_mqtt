@@ -31,7 +31,7 @@ class Command(BaseCommand):
                             help=unicode(_('client_id for broken'))
                             )
         parser.add_argument(
-            '--update', action='store_true', type=bool, default=False, dest='update',
+            '--update', action='store_true', default=False, dest='update',
             help=unicode(_('Use update method to save the updates, this will not run the django signals'))
         )
 
@@ -50,12 +50,14 @@ class Command(BaseCommand):
             else:
                 if clients.all().count() == 0:
                     raise CommandError(unicode(_('No client on DB')))
-                print 'id -> client'
+                self.stdout.write('id -> client')
                 for obj in clients.all():
-                    print obj.pk, '\t->', obj
+                    self.stdout.write("{} \t-> {}".format(obj.pk, obj))
                 db_client_id = input("Select id from DB: ")
+        self.stdout.write("Started")
         try:
             client_db = Client.objects.get(pk=db_client_id)
+            self.client_db = client_db
             cli = client_db.get_mqtt_client()
 
             cli.on_message = self.on_message
@@ -69,6 +71,7 @@ class Command(BaseCommand):
     def on_message(self, client, userdata, message):
         if not self.client_db:
             return
+        self.stdout.write('New message to {}'.format(message.topic))
 
         topics = Topic.objects.filter(name=message.topic)
         topic = None
@@ -80,16 +83,18 @@ class Command(BaseCommand):
         if not topic:
             return
 
-        datas = Data.objects.filter(topic=topic, qos=message.qos, client=self.client_db)
+        datas = Data.objects.filter(topic=topic, client=self.client_db)
         data = None
         if datas.count() == 1:
             data = datas.get()
         else:
             if self.create_if_not_exist:
-                data = Data.objects.create(topic=topic, qos=message.qos, client=self.client_db)
+                data = Data.objects.create(topic=topic, client=self.client_db)
         if data:
             if self.use_update:
-                Data.objects.filter(pk=data.pk).update(payload=message.payload)
+                Data.objects.filter(pk=data.pk).update(payload=message.payload, qos=message.qos)
             else:
                 data.payload = message.payload
+                data.qos = message.qos
                 data.save()
+            self.stdout.write('Updated topic {}'.format(message.topic))

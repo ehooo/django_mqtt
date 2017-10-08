@@ -45,11 +45,11 @@ class Command(BaseCommand):
             else:
                 if clients.all().count() == 0:
                     raise CommandError(unicode(_('No client on DB')))
-                print 'id -> client'
+                self.stdout.write('id -> client')
                 for obj in clients.all():
-                    print obj.pk, '\t->', obj
+                    self.stdout.write("{} \t-> {}".format(obj.pk, obj))
                 db_client_id = input("Select id from DB: ")
-        topic, is_new = Topic.objects.get_or_create(name=options['topic'])
+        topic = Topic(name=options['topic'])
         try:
             client = Client.objects.get(pk=db_client_id)
             data = Data(client=client, topic=topic, qos=options['qos'])

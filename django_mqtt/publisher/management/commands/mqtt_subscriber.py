@@ -75,9 +75,9 @@ class Command(BaseCommand):
             else:
                 if clients.all().count() == 0:
                     raise CommandError(unicode(_('No client on DB')))
-                print 'id -> client'
+                self.stdout.write('id -> client')
                 for obj in clients.all():
-                    print obj.pk, '\t->', obj
+                    self.stdout.write("{} \t-> {}".format(obj.pk, obj))
                 db_client_id = input("Select id from DB: ")
         try:
             obj = Client.objects.get(pk=db_client_id)

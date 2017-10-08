@@ -229,8 +229,6 @@ class ACL(models.Model):
             else:
                 for acl in broadcast:
                     allow &= acl.has_permission(user=user, password=password)
-        except cls.DoesNotExist:
-            pass
         except Topic.DoesNotExist:
             pass
         return allow
