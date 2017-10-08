@@ -21,6 +21,7 @@ SECRET_KEY = '#b68qv#(v-g26k3qt_-1ufg-prvsw2p)7@ctea*n!36-w23bv1'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+DB_DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -69,7 +70,7 @@ if not os.environ.get('RUN_DB_SERVER', False):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': ':memory:' if DEBUG else os.path.join(BASE_DIR, 'db.sqlite3'),
+            'NAME': ':memory:' if DB_DEBUG else os.path.join(BASE_DIR, 'db.sqlite3'),
         }
     }
 else:  # pragma: no cover

@@ -244,7 +244,7 @@ class Data(models.Model):
     client = models.ForeignKey(Client)
     topic = models.ForeignKey(Topic)
     qos = models.IntegerField(choices=PROTO_MQTT_QoS, default=0)
-    payload = models.BinaryField(blank=True, null=True)
+    payload = models.TextField(blank=True, null=True)
     retain = models.BooleanField(default=False)
     datetime = models.DateTimeField(auto_now=True)
 
