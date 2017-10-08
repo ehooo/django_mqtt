@@ -1,6 +1,8 @@
 from django_mqtt.publisher.models import *
 from django.core.files import File
 from django.test import TestCase
+from django_mqtt.publisher.management.commands.mqtt_updater import Command as CommandUpdater
+from paho.mqtt.client import MQTTMessage
 import os
 
 
@@ -133,3 +135,71 @@ class PublishTestCase(TestCase):
             client = Client.objects.get(pk=client.pk)
             self.assertNotEqual(client.client_id, None)
             client.save()
+
+
+class CommandUpdaterTestCase(TestCase):
+    def setUp(self):
+        self.command = CommandUpdater()
+        self.message = MQTTMessage()
+        self.message.topic = '/topic/name'
+        self.message.qos = 0
+        self.message.payload = 'payload'
+
+    def create_client(self):
+        server = Server.objects.create(host='test.mosquitto.org', port=1883)
+        return Client.objects.create(server=server, clean_session=False, keepalive=5)
+
+    def test_blank(self):
+        self.assertEqual(Client.objects.count(), 0)
+        self.assertIsNone(self.command.on_message(None, None, self.message))
+        self.assertEqual(Topic.objects.count(), 0)
+        self.assertEqual(Data.objects.count(), 0)
+
+    def test_message_no_topic(self):
+        self.command.client_db = self.create_client()
+        self.assertEqual(Client.objects.count(), 1)
+        self.assertIsNone(self.command.on_message(None, None, self.message))
+        self.assertEqual(Topic.objects.count(), 0)
+        self.assertEqual(Data.objects.count(), 0)
+
+    def test_message_no_data(self):
+        self.command.client_db = self.create_client()
+        Topic.objects.create(name=self.message.topic)
+        self.assertEqual(Client.objects.count(), 1)
+        self.assertIsNone(self.command.on_message(None, None, self.message))
+        self.assertEqual(Topic.objects.count(), 1)
+        self.assertEqual(Data.objects.count(), 0)
+
+    def test_message_with_all(self):
+        client = self.create_client()
+        self.command.client_db = client
+        self.assertEqual(Client.objects.count(), 1)
+        topic = Topic.objects.create(name=self.message.topic)
+        self.assertEqual(Topic.objects.count(), 1)
+        Data.objects.create(client=client, topic=topic, payload='initial payload')
+        self.assertEqual(Data.objects.count(), 1)
+        self.assertEqual(Data.objects.get().payload, 'initial payload')
+        self.assertIsNone(self.command.on_message(None, None, self.message))
+        self.assertEqual(Data.objects.get().payload, self.message.payload)
+
+    def test_message_for_other(self):
+        client = self.create_client()
+        self.command.client_db = client
+        topic = Topic.objects.create(name=self.message.topic)
+        Data.objects.create(client=client, topic=topic, payload='initial payload')
+        self.message.topic = '/new/topic'
+        self.assertIsNone(self.command.on_message(None, None, self.message))
+        self.assertEqual(Client.objects.count(), 1)
+        self.assertEqual(Topic.objects.count(), 1)
+        self.assertEqual(Data.objects.count(), 1)
+        self.assertEqual(Data.objects.get().payload, 'initial payload')
+
+    def test_message_with_create(self):
+        self.command.client_db = self.create_client()
+        self.assertEqual(Client.objects.count(), 1)
+        self.command.create_if_not_exist = True
+        self.assertIsNone(self.command.on_message(None, None, self.message))
+        self.assertEqual(Topic.objects.count(), 1)
+        self.assertEqual(Topic.objects.get().name, self.message.topic)
+        self.assertEqual(Data.objects.count(), 1)
+        self.assertEqual(Data.objects.get().payload, self.message.payload)
