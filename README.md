@@ -7,6 +7,11 @@ It is a django module that allow your:
 
 Install
 =======
+Install the latest version through pip
+```
+pip install -e git+https://github.com/ehooo/django_mqtt.git#egg=django_mqtt
+```
+
 Edit ```settings.py``` and add:
 ```
 INSTALLED_APPS = (
@@ -30,6 +35,11 @@ MQTT_ACL_ALLOW = False
 # Optional MQTT_ACL_ALLOW_ANONIMOUS indicated if must allow topic not valid users
 MQTT_ACL_ALLOW_ANONIMOUS = MQTT_ACL_ALLOW
 
+```
+
+Also need to run migrations once
+```
+python manage.py migrate
 ```
 
 
@@ -99,7 +109,7 @@ For active Django Auth system edit your ```urls.py``` and add:
 ```
 urlpatterns = patterns(
     ...
-    url(r'^mqtt/', include('django_mqtt.mosquitto.auth_plug.urls')),
+    url(r'^mqtt/', include('django_mqtt.mosquitto.auth_plugin.urls')),
     ...
 )
 ```
