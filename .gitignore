@@ -61,3 +61,7 @@ target/
 
 # SQLite
 *.sqlite3
+
+# virtualenv
+virtualenv/
+venv/
