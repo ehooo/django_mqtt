@@ -45,7 +45,7 @@ python manage.py migrate
 
 Setting Up
 ==========
-Browser to your admin page and configure: broken servers, auth and client data.
+Browser to your admin page and configure: Broker servers, auth and client data.
 
 You can add the following code for send Data model when new one are created:
 ```
@@ -187,10 +187,10 @@ All this steps could be done by shell or by admin page
  ```
 
 
-MQTT Test Brokens
+MQTT Test Brokers
 =================
 You can use the [mosquitto test server](http://test.mosquitto.org/) ```test.mosquitto.org```.
-See the [mosquitto test server website](http://test.mosquitto.org/) for information about the broken configuration
+See the [mosquitto test server website](http://test.mosquitto.org/) for information about the broker configuration
 
 
 Setup your own MQTT for test
