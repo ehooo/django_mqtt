@@ -33,6 +33,7 @@ class DataLogAdmin(admin.ModelAdmin):
     date_hierarchy = 'datetime'
     list_display = ('topic', 'qos', 'retain', 'datetime')
 
+
 admin.site.register(models.SecureConf, SecureConfAdmin)
 admin.site.register(models.Server, ServerAdmin)
 admin.site.register(models.Auth, AuthAdmin)

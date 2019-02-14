@@ -1,8 +1,8 @@
-import paho.mqtt.client as mqtt
 import random
-import struct
 import re
+import struct
 
+import paho.mqtt.client as mqtt
 
 MQTTTypes = [
     0,
@@ -24,8 +24,10 @@ MQTTTypes = [
 ]
 
 MQTT_CLIENT_ID_RE = re.compile('(?P<client>[0-9a-zA-Z]{1,23})')
-MQTT_TOPIC_RE = re.compile('(?P<topic>(/(?=[^/]))?(?P<path>(?P<dir_name>[^+#/]+|\+)/)*(?P<end>#|\+|[^+#/]+))(?!.)',
-                           flags=re.DOTALL)
+MQTT_TOPIC_RE = re.compile(
+    r'(?P<topic>(/(?=[^/]))?(?P<path>(?P<dir_name>[^+#/]+|\+)/)*(?P<end>#|\+|[^+#/]+))(?!.)',
+    flags=re.DOTALL
+)
 
 MQTT_QoS0 = int('00', 2)
 MQTT_QoS1 = int('01', 2)

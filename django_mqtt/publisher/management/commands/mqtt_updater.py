@@ -4,7 +4,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils.translation import ugettext_lazy as _
 
 from django_mqtt.publisher.models import Client, Data
-from django_mqtt.models import Topic, ClientId
+from django_mqtt.models import Topic
 
 
 class Command(BaseCommand):

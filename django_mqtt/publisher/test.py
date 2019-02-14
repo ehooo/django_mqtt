@@ -1,9 +1,26 @@
-from django_mqtt.publisher.models import *
+import os
+import ssl
+
+from django.conf import settings
 from django.core.files import File
 from django.test import TestCase
+from django_mqtt.models import Topic
+from django_mqtt.protocol import MQTT_QoS0, MQTT_QoS1, MQTT_QoS2
 from django_mqtt.publisher.management.commands.mqtt_updater import Command as CommandUpdater
+from django_mqtt.publisher.models import (
+    CERT_REQS,
+    PROTO_MQTT_CONN_ERROR_UNKNOWN,
+    PROTO_MQTT_CONN_OK,
+    PROTO_SSL_VERSION,
+    Auth,
+    Client,
+    ClientId,
+    Data,
+    SecureConf,
+    Server,
+    private_fs,
+)
 from paho.mqtt.client import MQTTMessage
-import os
 
 
 class PublishTestCase(TestCase):
@@ -41,7 +58,6 @@ class PublishTestCase(TestCase):
     def test_get_mqtt_client(self):
         client_id = ClientId.objects.create(name='test1client')
         server = Server.objects.create(host='localhost', port=1883)
-        init_status = server.status
         self.assertNotEqual(server.status, PROTO_MQTT_CONN_OK)
         auth = Auth.objects.create(user='admin', password='admin1234')
         client = Client.objects.create(server=server, auth=auth, client_id=client_id, clean_session=True)
@@ -78,7 +94,6 @@ class PublishTestCase(TestCase):
     def test_publish_ok_clear(self):
         server = Server.objects.create(host='test.mosquitto.org', port=1883)
         self.assertEqual(server.status, PROTO_MQTT_CONN_ERROR_UNKNOWN)
-        init_status = server.status
         self.assertNotEqual(server.status, PROTO_MQTT_CONN_OK)
         client = Client.objects.create(server=server, clean_session=False)
         self.assertEqual(client.client_id, None)

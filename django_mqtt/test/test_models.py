@@ -1,8 +1,16 @@
-from django.test import TestCase
-
-from django.contrib.auth.models import User
-from django_mqtt.models import *
+from django.conf import settings
+from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
+from django.test import TestCase
+from django_mqtt.models import (
+    ACL,
+    PROTO_MQTT_ACC_PUB,
+    PROTO_MQTT_ACC_SUS,
+    WILDCARD_MULTI_LEVEL,
+    ClientId,
+    Topic
+)
+from django_mqtt.protocol import gen_client_id
 
 
 class TopicModelsTestCase(TestCase):

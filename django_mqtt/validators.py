@@ -1,9 +1,13 @@
-
-from django.utils.translation import ugettext_lazy as _
-from django.utils.deconstruct import deconstructible
 from django.core.exceptions import ValidationError
+from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_text
-from django_mqtt.protocol import *
+from django.utils.translation import ugettext_lazy as _
+from django_mqtt.protocol import (
+    MQTT_CLIENT_ID_RE,
+    MQTT_TOPIC_RE,
+    WILDCARD_SINGLE_LEVEL,
+    WILDCARD_MULTI_LEVEL,
+)
 
 
 @deconstructible
@@ -29,6 +33,7 @@ class ClientIdValidator(object):
         cli = found.group('client')
         if cli != value:
             raise ValidationError(self.message, code=self.code)
+
 
 client_id_validator = ClientIdValidator()
 
@@ -70,5 +75,6 @@ class TopicValidator(object):
             raise ValidationError(self.message, code=self.code)
         if found.group('topic') != value:
             raise ValidationError(self.message, code=self.code)
+
 
 topic_validator = TopicValidator()

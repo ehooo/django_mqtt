@@ -1,13 +1,17 @@
 import six
 
-from django_mqtt.validators import *
-from django.contrib.auth.models import Group
-from django.utils.translation import ugettext_lazy as _
 from django.conf import settings
+from django.contrib.auth.models import Group
+from django.core.exceptions import ValidationError
 from django.db import models
-
-from django_mqtt.protocol import WILDCARD_SINGLE_LEVEL, WILDCARD_MULTI_LEVEL
-from django_mqtt.protocol import TOPIC_SEP, TOPIC_BEGINNING_DOLLAR
+from django.utils.translation import ugettext_lazy as _
+from django_mqtt.protocol import (
+    TOPIC_BEGINNING_DOLLAR,
+    TOPIC_SEP,
+    WILDCARD_MULTI_LEVEL,
+    WILDCARD_SINGLE_LEVEL
+)
+from django_mqtt.validators import ClientIdValidator, TopicValidator
 
 PROTO_MQTT_ACC_SUS = 1
 PROTO_MQTT_ACC_PUB = 2
@@ -150,7 +154,7 @@ class Topic(SecureSave):
     def get_candidates(self):
         # TODO improve it
         candidates = Topic.objects.filter(dollar=self.is_dollar(), wildcard=False)
-        init = Topic.objects.filter(dollar=self.is_dollar(), wildcard=False)
+        Topic.objects.filter(dollar=self.is_dollar(), wildcard=False)
         topic = self.name
         multi = False
         if topic.endswith(WILDCARD_MULTI_LEVEL):
@@ -165,8 +169,9 @@ class Topic(SecureSave):
             candidates = candidates.exclude(name__contains=TOPIC_SEP)
         else:
             if multi:
-                ini = candidates.filter(name__startswith=parts[0])
-                con = candidates.filter(name__contains=parts[-1])
+                # ini = candidates.filter(name__startswith=parts[0])
+                # con = candidates.filter(name__contains=parts[-1])
+                # TODO
                 candidates = candidates.filter(name__startswith=parts[0], name__contains=parts[-1])
             else:
                 candidates = candidates.filter(name__startswith=parts[0], name__endswith=parts[-1])

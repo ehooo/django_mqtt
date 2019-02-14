@@ -35,7 +35,7 @@ class Auth(View):
         topics = Topic.objects.filter(name=data.get('topic'))
         try:
             acc = int(data.get('acc', None))
-        except:
+        except (TypeError, ValueError):
             acc = None
         allow = False
         if topics.exists() and acc in dict(PROTO_MQTT_ACC).keys():
@@ -122,7 +122,7 @@ class Acl(View):
 
         try:
             acc = int(data.get('acc', None))
-        except:
+        except (TypeError, ValueError):
             acc = None
 
         if not has_permission(user, topic, acc=acc, clientid=clientid):

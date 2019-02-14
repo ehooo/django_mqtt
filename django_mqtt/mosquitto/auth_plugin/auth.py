@@ -42,4 +42,3 @@ def has_permission(user, topic, acc=None, clientid=None):
         # TODO search best candidate
 
     return allow
-

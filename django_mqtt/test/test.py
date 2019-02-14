@@ -1,8 +1,19 @@
+import struct
 
-from django_mqtt.validators import *
-from django_mqtt.protocol import *
-
+from django.core.exceptions import ValidationError
 from django.test import TestCase
+
+from django_mqtt.protocol import (
+    gen_string,
+    get_remaining,
+    get_string,
+    int2remaining,
+    remaining2list
+)
+from django_mqtt.validators import (
+    ClientIdValidator,
+    TopicValidator,
+)
 
 
 class ValidatorTestCase(TestCase):
