@@ -1,16 +1,14 @@
-import ssl
 import socket
+import ssl
 
-from django.utils.translation import ugettext_lazy as _
-from django.core.files.storage import FileSystemStorage
-from django.conf import settings
-from django.db import models
 import paho.mqtt.client as mqtt
-
-from django_mqtt.publisher.signals import *
-from django_mqtt.protocol import *
-from django_mqtt.models import Topic, ClientId
-
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+from django.db import models
+from django.utils.translation import ugettext_lazy as _
+from django_mqtt.models import ClientId, Topic
+from django_mqtt.protocol import MQTT_QoS0, MQTT_QoS1, MQTT_QoS2
+from django_mqtt.publisher.signals import mqtt_connect, mqtt_disconnect, mqtt_pre_publish, mqtt_publish
 
 PROTO_MQTT_CONN_OK = mqtt.CONNACK_ACCEPTED
 PROTO_MQTT_CONN_ERROR_PROTO_VERSION = mqtt.CONNACK_REFUSED_PROTOCOL_VERSION
@@ -143,7 +141,7 @@ class Server(models.Model):
     """
     host = models.CharField(max_length=1024)
     port = models.IntegerField(default=1883)
-    secure = models.ForeignKey(SecureConf, null=True, blank=True)
+    secure = models.ForeignKey(SecureConf, on_delete=models.CASCADE, null=True, blank=True)
     protocol = models.IntegerField(choices=PROTO_MQTT_VERSION, default=mqtt.MQTTv311)
     status = models.IntegerField(choices=PROTO_MQTT_CONN_STATUS, default=PROTO_MQTT_CONN_ERROR_UNKNOWN)
 
@@ -186,9 +184,9 @@ class Client(models.Model):
         If False, the client is a persistent client and subscription information and queued messages will be retained
         when the client disconnects.
     """
-    server = models.ForeignKey(Server)
-    auth = models.ForeignKey(Auth, blank=True, null=True)
-    client_id = models.ForeignKey(ClientId, null=True, blank=True)
+    server = models.ForeignKey(Server, on_delete=models.CASCADE)
+    auth = models.ForeignKey(Auth, on_delete=models.CASCADE, blank=True, null=True)
+    client_id = models.ForeignKey(ClientId, on_delete=models.CASCADE, null=True, blank=True)
 
     keepalive = models.IntegerField(default=60)
     clean_session = models.BooleanField(default=True)
@@ -241,8 +239,8 @@ class Data(models.Model):
 
         :var datetime : Datetime of last change
     """
-    client = models.ForeignKey(Client)
-    topic = models.ForeignKey(Topic)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE)
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
     qos = models.IntegerField(choices=PROTO_MQTT_QoS, default=0)
     payload = models.TextField(blank=True, null=True)
     retain = models.BooleanField(default=False)

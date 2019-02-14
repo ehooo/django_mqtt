@@ -6,6 +6,11 @@ import django.core.files.storage
 from django.db import migrations, models
 import django.db.models.deletion
 
+from django.conf import settings
+private_location = settings.BASE_DIR
+if hasattr(settings, 'MQTT_CERTS_ROOT'):
+    private_location = settings.MQTT_CERTS_ROOT
+
 
 class Migration(migrations.Migration):
 
@@ -50,11 +55,11 @@ class Migration(migrations.Migration):
             name='SecureConf',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ca_certs', models.FileField(storage=django.core.files.storage.FileSystemStorage(location=b'/home/harsh/django_mqtt/private'), upload_to=b'ca')),
+                ('ca_certs', models.FileField(storage=django.core.files.storage.FileSystemStorage(location=private_location), upload_to=b'ca')),
                 ('cert_reqs', models.IntegerField(choices=[(2, 'Required'), (1, 'Optional'), (0, 'None')], default=2)),
                 ('tls_version', models.IntegerField(choices=[(3, b'v1'), (2, b'v2.3')], default=3)),
-                ('certfile', models.FileField(blank=True, null=True, storage=django.core.files.storage.FileSystemStorage(location=b'/home/harsh/django_mqtt/private'), upload_to=b'certs')),
-                ('keyfile', models.FileField(blank=True, null=True, storage=django.core.files.storage.FileSystemStorage(location=b'/home/harsh/django_mqtt/private'), upload_to=b'keys')),
+                ('certfile', models.FileField(blank=True, null=True, storage=django.core.files.storage.FileSystemStorage(location=private_location), upload_to=b'certs')),
+                ('keyfile', models.FileField(blank=True, null=True, storage=django.core.files.storage.FileSystemStorage(location=private_location), upload_to=b'keys')),
                 ('ciphers', models.CharField(blank=True, default=None, max_length=1024, null=True)),
             ],
         ),
