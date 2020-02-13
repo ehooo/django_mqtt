@@ -1,14 +1,14 @@
 from __future__ import absolute_import
 
 from django.core.management.base import BaseCommand, CommandError
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import ugettext as _
 
 from django_mqtt.publisher.models import Client, Data
 from django_mqtt.models import Topic
 
 
 class Command(BaseCommand):
-    help = unicode(_('Connect with client as subscriber, for real time update proposed'))
+    help = _('Connect with client as subscriber, for real time update proposed')
     client_db = None
     create_if_not_exist = False
     use_update = False
@@ -16,28 +16,28 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('topic', action='store',
                             type=str, default=None,
-                            help=unicode(_('Subcribe topic'))
+                            help=_('Subcribe topic')
                             )
         parser.add_argument('--id', action='store',
                             type=int, default=None, dest='id',
-                            help=unicode(_('id from DB object'))
+                            help=_('id from DB object')
                             )
         parser.add_argument('--qos', action='store',
                             type=int, default=0, dest='qos',
-                            help=unicode(_('Quality of Service'))
+                            help=_('Quality of Service')
                             )
         parser.add_argument('--client_id', action='store',
                             type=str, default=None, dest='client_id',
-                            help=unicode(_('client_id for broken'))
+                            help=_('client_id for broken')
                             )
         parser.add_argument(
             '--update', action='store_true', default=False, dest='update',
-            help=unicode(_('Use update method to save the updates, this will not run the django signals'))
+            help=_('Use update method to save the updates, this will not run the django signals')
         )
 
     def handle(self, *args, **options):
         if not options['topic']:
-            raise CommandError(unicode(_('Topic requiered and must be only one')))
+            raise CommandError(_('Topic requiered and must be only one'))
         apply_filter = {}
         self.use_update = options['update']
         db_client_id = options['id']
@@ -49,7 +49,7 @@ class Command(BaseCommand):
                 db_client_id = clients.all()[0].pk
             else:
                 if clients.all().count() == 0:
-                    raise CommandError(unicode(_('No client on DB')))
+                    raise CommandError(_('No client on DB'))
                 self.stdout.write('id -> client')
                 for obj in clients.all():
                     self.stdout.write("{} \t-> {}".format(obj.pk, obj))
@@ -66,7 +66,7 @@ class Command(BaseCommand):
             cli.loop_forever()
             cli.disconnect()
         except Client.DoesNotExist:
-            raise CommandError(unicode(_('Client not exist')))
+            raise CommandError(_('Client not exist'))
 
     def on_message(self, client, userdata, message):
         if not self.client_db:

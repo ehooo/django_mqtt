@@ -1,5 +1,6 @@
 import struct
 
+import six
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 
@@ -125,24 +126,29 @@ class ProtocolTestCase(TestCase):
     def test_empty_strings(self):
         self.assertEqual(gen_string(''), '\x00\x00')
         self.assertEqual(gen_string(u''), '\x00\x00')
-        self.assertEqual(gen_string(unicode(u'')), '\x00\x00')
+        if six.PY2:
+            self.assertEqual(gen_string(unicode(u'')), '\x00\x00')
 
     def test_gen_rfc3629_strings(self):
         self.assertEqual(gen_string('MQTT'), '\x00\x04MQTT')
         self.assertEqual(gen_string(u'MQTT'), '\x00\x04MQTT')
-        self.assertEqual(gen_string(unicode(u'MQTT')), '\x00\x04MQTT')
+        if six.PY2:
+            self.assertEqual(gen_string(unicode(u'MQTT')), '\x00\x04MQTT')
 
     def test_gen_rfc3629_alfa_strings(self):
         self.assertEqual(gen_string(u'\u0041\u2262\u0391\u002E'), '\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E')
-        self.assertEqual(gen_string(unicode(u'\u0041\u2262\u0391\u002E')), '\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E')
+        if six.PY2:
+            self.assertEqual(gen_string(unicode(u'\u0041\u2262\u0391\u002E')), '\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E')
 
     def test_gen_rfc3629_korean_strings(self):
         self.assertEqual(gen_string(u'\uD55C\uAD6D\uC5B4'), '\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4')
-        self.assertEqual(gen_string(unicode(u'\uD55C\uAD6D\uC5B4')), '\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4')
+        if six.PY2:
+            self.assertEqual(gen_string(unicode(u'\uD55C\uAD6D\uC5B4')), '\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4')
 
     def test_gen_rfc3629_japanese_strings(self):
         self.assertEqual(gen_string(u'\u65E5\u672C\u8A9E'), '\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
-        self.assertEqual(gen_string(unicode(u'\u65E5\u672C\u8A9E')), '\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
+        if six.PY2:
+            self.assertEqual(gen_string(unicode(u'\u65E5\u672C\u8A9E')), '\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
 
     def test_get_rfc3629(self):
         self.assertEqual(get_string('\x00\x04MQTT'), u'MQTT')
