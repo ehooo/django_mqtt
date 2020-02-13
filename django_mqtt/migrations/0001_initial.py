@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('allow', models.BooleanField(default=True)),
                 ('acc', models.IntegerField(choices=[(1, 'Suscriptor'), (2, 'Publisher')])),
-                ('password', models.CharField(blank=True, help_text=b'Only valid for connect', max_length=512, null=True)),
+                ('password', models.CharField(blank=True, help_text='Only valid for connect', max_length=512, null=True)),
                 ('groups', models.ManyToManyField(blank=True, to='auth.Group')),
             ],
         ),

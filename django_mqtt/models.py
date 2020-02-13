@@ -199,7 +199,7 @@ class Topic(SecureSave):
 
 class ACL(models.Model):
     allow = models.BooleanField(default=True)
-    topic = models.ForeignKey(Topic)  # There is many of acc options by topic
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE)  # There is many of acc options by topic
     acc = models.IntegerField(choices=PROTO_MQTT_ACC)
     users = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True)
     groups = models.ManyToManyField(Group, blank=True)
