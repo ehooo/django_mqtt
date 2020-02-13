@@ -61,46 +61,46 @@ class ProtocolTestCase(TestCase):
         self.assertEqual(len(remaining2list(268435455)), 4)
 
     def test_wrong_int2remaining(self):
-        self.assertEqual(int2remaining(None), '')
-        self.assertEqual(int2remaining(-1), '')
+        self.assertEqual(int2remaining(None), b'')
+        self.assertEqual(int2remaining(-1), b'')
         self.assertRaises(TypeError, int2remaining, object)
         self.assertRaises(TypeError, int2remaining, None, exception=True)
         self.assertRaises(TypeError, int2remaining, object, exception=True)
         self.assertRaises(ValueError, int2remaining, -1, exception=True)
 
     def test_int2remaining(self):
-        self.assertEqual(int2remaining(-1), '')
-        self.assertEqual(int2remaining(0), '\x00')
-        self.assertEqual(int2remaining(127), '\x7f')
-        self.assertEqual(int2remaining(128), '\x80\x01')
-        self.assertEqual(int2remaining(16383), '\xff\x7f')
-        self.assertEqual(int2remaining(16384), '\x80\x80\x01')
-        self.assertEqual(int2remaining(2097151), '\xff\xff\x7f')
-        self.assertEqual(int2remaining(2097152), '\x80\x80\x80\x01')
-        self.assertEqual(int2remaining(268435455), '\xff\xff\xff\x7f')
+        self.assertEqual(int2remaining(-1), b'')
+        self.assertEqual(int2remaining(0), b'\x00')
+        self.assertEqual(int2remaining(127), b'\x7f')
+        self.assertEqual(int2remaining(128), b'\x80\x01')
+        self.assertEqual(int2remaining(16383), b'\xff\x7f')
+        self.assertEqual(int2remaining(16384), b'\x80\x80\x01')
+        self.assertEqual(int2remaining(2097151), b'\xff\xff\x7f')
+        self.assertEqual(int2remaining(2097152), b'\x80\x80\x80\x01')
+        self.assertEqual(int2remaining(268435455), b'\xff\xff\xff\x7f')
 
     def test_wrong_get_remaining(self):
         self.assertEqual(get_remaining(None), None)
         self.assertRaises(TypeError, get_remaining, object)
-        self.assertEqual(get_remaining('\x80\x80'), -1)
-        self.assertEqual(get_remaining('\x00\x80'), -1)
-        self.assertEqual(get_remaining('\x80\x01\x00\x00'), -1)
+        self.assertEqual(get_remaining(b'\x80\x80'), -1)
+        self.assertEqual(get_remaining(b'\x00\x80'), -1)
+        self.assertEqual(get_remaining(b'\x80\x01\x00\x00'), -1)
         self.assertRaises(TypeError, get_remaining, None, exception=True)
         self.assertRaises(TypeError, get_remaining, object, exception=True)
-        self.assertRaises(struct.error, get_remaining, '\x80\x80', exception=True)
-        self.assertRaises(struct.error, get_remaining, '\x00\x80', exception=True)
-        self.assertRaises(struct.error, get_remaining, '\x00\x01\x00\x00', exception=True)
-        self.assertRaises(struct.error, get_remaining, '\x80\x01\x00', exception=True)
+        self.assertRaises(struct.error, get_remaining, b'\x80\x80', exception=True)
+        self.assertRaises(struct.error, get_remaining, b'\x00\x80', exception=True)
+        self.assertRaises(struct.error, get_remaining, b'\x00\x01\x00\x00', exception=True)
+        self.assertRaises(struct.error, get_remaining, b'\x80\x01\x00', exception=True)
 
     def test_get_remaining(self):
-        self.assertEqual(get_remaining('\x00', exception=False), 0)
-        self.assertEqual(get_remaining('\x7f', exception=False), 127)
-        self.assertEqual(get_remaining('\x80\x01', exception=False), 128)
-        self.assertEqual(get_remaining('\xff\x7f', exception=False), 16383)
-        self.assertEqual(get_remaining('\x80\x80\x01', exception=False), 16384)
-        self.assertEqual(get_remaining('\xff\xff\x7f', exception=False), 2097151)
-        self.assertEqual(get_remaining('\x80\x80\x80\x01', exception=False), 2097152)
-        self.assertEqual(get_remaining('\xff\xff\xff\x7f', exception=False), 268435455)
+        self.assertEqual(get_remaining(b'\x00', exception=False), 0)
+        self.assertEqual(get_remaining(b'\x7f', exception=False), 127)
+        self.assertEqual(get_remaining(b'\x80\x01', exception=False), 128)
+        self.assertEqual(get_remaining(b'\xff\x7f', exception=False), 16383)
+        self.assertEqual(get_remaining(b'\x80\x80\x01', exception=False), 16384)
+        self.assertEqual(get_remaining(b'\xff\xff\x7f', exception=False), 2097151)
+        self.assertEqual(get_remaining(b'\x80\x80\x80\x01', exception=False), 2097152)
+        self.assertEqual(get_remaining(b'\xff\xff\xff\x7f', exception=False), 268435455)
 
     def test_wrong_gen_string(self):
         self.assertEqual(gen_string('\xff'), '')
@@ -124,14 +124,14 @@ class ProtocolTestCase(TestCase):
         self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xFF', exception=True)
 
     def test_empty_strings(self):
-        self.assertEqual(gen_string(''), '\x00\x00')
-        self.assertEqual(gen_string(u''), '\x00\x00')
+        self.assertEqual(gen_string(''), b'\x00\x00')
+        self.assertEqual(gen_string(u''), b'\x00\x00')
         if six.PY2:
             self.assertEqual(gen_string(unicode(u'')), '\x00\x00')
 
     def test_gen_rfc3629_strings(self):
-        self.assertEqual(gen_string('MQTT'), '\x00\x04MQTT')
-        self.assertEqual(gen_string(u'MQTT'), '\x00\x04MQTT')
+        self.assertEqual(gen_string('MQTT'), b'\x00\x04MQTT')
+        self.assertEqual(gen_string(u'MQTT'), b'\x00\x04MQTT')
         if six.PY2:
             self.assertEqual(gen_string(unicode(u'MQTT')), '\x00\x04MQTT')
 

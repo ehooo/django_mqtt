@@ -141,7 +141,7 @@ class Topic(SecureSave):
 
         iter_comp = iter(comp_parts)
         for part in my_parts:
-            compare = iter_comp.next()
+            compare = next(iter_comp)
             if part == WILDCARD_SINGLE_LEVEL:
                 if comp.is_wildcard() and compare == WILDCARD_MULTI_LEVEL:
                     return False

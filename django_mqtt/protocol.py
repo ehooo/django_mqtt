@@ -3,6 +3,7 @@ import re
 import struct
 
 import paho.mqtt.client as mqtt
+import six
 
 MQTTTypes = [
     0,
@@ -74,7 +75,7 @@ TOPIC_SEP = '/'
 TOPIC_BEGINNING_DOLLAR = '$'
 WILDCARD_SINGLE_LEVEL = '+'
 WILDCARD_MULTI_LEVEL = '#'
-MQTT_NONE_CHAR = '\x00\x00'
+MQTT_NONE_CHAR = b'\x00\x00'
 
 
 def remaining2list(remain, exception=False):
@@ -161,7 +162,9 @@ def get_string(buff, exception=False):
         fmt = "!"+("B"*str_size)
         utf8_str = struct.unpack_from(fmt, buff, struct.calcsize("!H"))
         byte_str = map(chr, utf8_str)
-        utf8_str = ''.join(byte_str).decode('utf8')
+        utf8_str = ''.join(byte_str)
+        if six.PY2:
+            utf8_str = utf8_str.decode('utf8')
         if MQTT_NONE_CHAR in utf8_str:
             if exception:
                 raise ValueError('char 0x0000 not allowed')
