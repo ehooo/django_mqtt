@@ -103,25 +103,27 @@ class ProtocolTestCase(TestCase):
         self.assertEqual(get_remaining(b'\xff\xff\xff\x7f', exception=False), 268435455)
 
     def test_wrong_gen_string(self):
-        self.assertEqual(gen_string('\xff'), '')
-        self.assertEqual(gen_string(None), '')
-        self.assertEqual(gen_string(object), '')
-        self.assertEqual(gen_string('\xff\xff\x00'), '')
-        self.assertEqual(gen_string('\x00\x02\x00\x00'), '\x00\x02\x00\x02')
-        self.assertEqual(gen_string('\x00\x01\xC0'), '')
-        self.assertEqual(gen_string('\x00\x01\xC1'), '')
-        self.assertEqual(gen_string('\x00\x01\xF5'), '')
-        self.assertEqual(gen_string('\x00\x01\xFF'), '')
+        self.assertEqual(gen_string(None), b'')
+        self.assertEqual(gen_string(object), b'')
+        self.assertEqual(gen_string('\x00\x02\x00\x00'), b'\x00\x02\x00\x02')
+        if six.PY2:  # In python3 all str are unicode
+            self.assertEqual(gen_string('\xff'), b'')
+            self.assertEqual(gen_string('\xff\xff\x00'), b'')
+            self.assertEqual(gen_string('\x00\x01\xC0'), b'')
+            self.assertEqual(gen_string('\x00\x01\xC1'), b'')
+            self.assertEqual(gen_string('\x00\x01\xF5'), b'')
+            self.assertEqual(gen_string('\x00\x01\xFF'), b'')
 
-        self.assertRaises(UnicodeDecodeError, gen_string, '\xff', exception=True)
         self.assertRaises(TypeError, gen_string, None, exception=True)
         self.assertRaises(TypeError, gen_string, object, exception=True)
-        self.assertRaises(UnicodeDecodeError, gen_string, '\xff\xff\x00', exception=True)
         self.assertRaises(ValueError, gen_string, '\x00\x02\x00\x00', exception=True)
-        self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xC0', exception=True)
-        self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xC1', exception=True)
-        self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xF5', exception=True)
-        self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xFF', exception=True)
+        if six.PY2:  # In python3 all str are unicode
+            self.assertRaises(UnicodeDecodeError, gen_string, '\xff\xff\x00', exception=True)
+            self.assertRaises(UnicodeDecodeError, gen_string, '\xff', exception=True)
+            self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xC0', exception=True)
+            self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xC1', exception=True)
+            self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xF5', exception=True)
+            self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xFF', exception=True)
 
     def test_empty_strings(self):
         self.assertEqual(gen_string(''), b'\x00\x00')
@@ -136,47 +138,47 @@ class ProtocolTestCase(TestCase):
             self.assertEqual(gen_string(unicode(u'MQTT')), '\x00\x04MQTT')
 
     def test_gen_rfc3629_alfa_strings(self):
-        self.assertEqual(gen_string(u'\u0041\u2262\u0391\u002E'), '\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E')
+        self.assertEqual(gen_string(u'\u0041\u2262\u0391\u002E'), b'\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E')
         if six.PY2:
             self.assertEqual(gen_string(unicode(u'\u0041\u2262\u0391\u002E')), '\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E')
 
     def test_gen_rfc3629_korean_strings(self):
-        self.assertEqual(gen_string(u'\uD55C\uAD6D\uC5B4'), '\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4')
+        self.assertEqual(gen_string(u'\uD55C\uAD6D\uC5B4'), b'\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4')
         if six.PY2:
             self.assertEqual(gen_string(unicode(u'\uD55C\uAD6D\uC5B4')), '\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4')
 
     def test_gen_rfc3629_japanese_strings(self):
-        self.assertEqual(gen_string(u'\u65E5\u672C\u8A9E'), '\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
+        self.assertEqual(gen_string(u'\u65E5\u672C\u8A9E'), b'\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
         if six.PY2:
             self.assertEqual(gen_string(unicode(u'\u65E5\u672C\u8A9E')), '\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
 
     def test_get_rfc3629(self):
-        self.assertEqual(get_string('\x00\x04MQTT'), u'MQTT')
-        self.assertEqual(get_string('\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E'), u'\u0041\u2262\u0391\u002E')
-        self.assertEqual(get_string('\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4'), u'\uD55C\uAD6D\uC5B4')
-        self.assertEqual(get_string('\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E'), u'\u65E5\u672C\u8A9E')
+        self.assertEqual(get_string(b'\x00\x04MQTT'), u'MQTT')
+        self.assertEqual(get_string(b'\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E'), u'\u0041\u2262\u0391\u002E')
+        self.assertEqual(get_string(b'\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4'), u'\uD55C\uAD6D\uC5B4')
+        self.assertEqual(get_string(b'\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E'), u'\u65E5\u672C\u8A9E')
 
     def test_wrong_get_string(self):
         self.assertEqual(get_string(None), '')
-        self.assertEqual(get_string('\xff'), '')
-        self.assertEqual(get_string('\xff\xff'), '')
+        self.assertEqual(get_string(b'\xff'), '')
+        self.assertEqual(get_string(b'\xff\xff'), '')
 
-        self.assertEqual(get_string('\xff\xff\x00'), '')
-        self.assertEqual(get_string('\x00\x02\x00\x00'), '')
-        self.assertEqual(get_string('\x00\x01\xC0'), '')
-        self.assertEqual(get_string('\x00\x01\xC1'), '')
-        self.assertEqual(get_string('\x00\x01\xF5'), '')
-        self.assertEqual(get_string('\x00\x01\xFF'), '')
-        self.assertEqual(get_string('\x00\x01\x00'), '\x00')
+        self.assertEqual(get_string(b'\xff\xff\x00'), '')
+        self.assertEqual(get_string(b'\x00\x02\x00\x00'), '')
+        self.assertEqual(get_string(b'\x00\x01\xC0'), '')
+        self.assertEqual(get_string(b'\x00\x01\xC1'), '')
+        self.assertEqual(get_string(b'\x00\x01\xF5'), '')
+        self.assertEqual(get_string(b'\x00\x01\xFF'), '')
+        self.assertEqual(get_string(b'\x00\x01\x00'), '\x00')
 
         self.assertRaises(TypeError, get_string, object)
-        self.assertRaises(TypeError, get_string, '\xff', exception=True)
-        self.assertRaises(struct.error, get_string, '\xff\xff', exception=True)
-        self.assertRaises(struct.error, get_string, '\xff\xff\x00', exception=True)
-        self.assertRaises(ValueError, get_string, '\x00\x02\x00\x00', exception=True)
-        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xC0', exception=True)
-        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xC1', exception=True)
-        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xF5', exception=True)
-        self.assertRaises(UnicodeDecodeError, get_string, '\x00\x01\xFF', exception=True)
+        self.assertRaises(TypeError, get_string, b'\xff', exception=True)
+        self.assertRaises(struct.error, get_string, b'\xff\xff', exception=True)
+        self.assertRaises(struct.error, get_string, b'\xff\xff\x00', exception=True)
+        self.assertRaises(ValueError, get_string, b'\x00\x02\x00\x00', exception=True)
+        self.assertRaises(UnicodeDecodeError, get_string, b'\x00\x01\xC0', exception=True)
+        self.assertRaises(UnicodeDecodeError, get_string, b'\x00\x01\xC1', exception=True)
+        self.assertRaises(UnicodeDecodeError, get_string, b'\x00\x01\xF5', exception=True)
+        self.assertRaises(UnicodeDecodeError, get_string, b'\x00\x01\xFF', exception=True)
         self.assertRaises(TypeError, get_string, None, exception=True)
         self.assertRaises(TypeError, get_string, object, exception=True)
