@@ -106,7 +106,7 @@ class ProtocolTestCase(TestCase):
         self.assertEqual(gen_string(None), b'')
         self.assertEqual(gen_string(object), b'')
         self.assertEqual(gen_string('\x00\x02\x00\x00'), b'\x00\x02\x00\x02')
-        if six.PY2:  # In python3 all str are unicode
+        if six.PY2:  # pragma: no cover # In python3 all str are unicode
             self.assertEqual(gen_string('\xff'), b'')
             self.assertEqual(gen_string('\xff\xff\x00'), b'')
             self.assertEqual(gen_string('\x00\x01\xC0'), b'')
@@ -117,7 +117,7 @@ class ProtocolTestCase(TestCase):
         self.assertRaises(TypeError, gen_string, None, exception=True)
         self.assertRaises(TypeError, gen_string, object, exception=True)
         self.assertRaises(ValueError, gen_string, '\x00\x02\x00\x00', exception=True)
-        if six.PY2:  # In python3 all str are unicode
+        if six.PY2:  # pragma: no cover # In python3 all str are unicode
             self.assertRaises(UnicodeDecodeError, gen_string, '\xff\xff\x00', exception=True)
             self.assertRaises(UnicodeDecodeError, gen_string, '\xff', exception=True)
             self.assertRaises(UnicodeDecodeError, gen_string, '\x00\x01\xC0', exception=True)
@@ -128,28 +128,28 @@ class ProtocolTestCase(TestCase):
     def test_empty_strings(self):
         self.assertEqual(gen_string(''), b'\x00\x00')
         self.assertEqual(gen_string(u''), b'\x00\x00')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(gen_string(unicode(u'')), '\x00\x00')
 
     def test_gen_rfc3629_strings(self):
         self.assertEqual(gen_string('MQTT'), b'\x00\x04MQTT')
         self.assertEqual(gen_string(u'MQTT'), b'\x00\x04MQTT')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(gen_string(unicode(u'MQTT')), '\x00\x04MQTT')
 
     def test_gen_rfc3629_alfa_strings(self):
         self.assertEqual(gen_string(u'\u0041\u2262\u0391\u002E'), b'\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(gen_string(unicode(u'\u0041\u2262\u0391\u002E')), '\x00\x07\x41\xE2\x89\xA2\xCE\x91\x2E')
 
     def test_gen_rfc3629_korean_strings(self):
         self.assertEqual(gen_string(u'\uD55C\uAD6D\uC5B4'), b'\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(gen_string(unicode(u'\uD55C\uAD6D\uC5B4')), '\x00\x09\xED\x95\x9C\xEA\xB5\xAD\xEC\x96\xB4')
 
     def test_gen_rfc3629_japanese_strings(self):
         self.assertEqual(gen_string(u'\u65E5\u672C\u8A9E'), b'\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(gen_string(unicode(u'\u65E5\u672C\u8A9E')), '\x00\x09\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E')
 
     def test_get_rfc3629(self):

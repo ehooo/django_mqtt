@@ -264,7 +264,7 @@ class ACLModelsTestCase(TestCase):
         topic = Topic.objects.create(name='/test')
         acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
         self.assertEqual(str(acl), "ACL Suscriptor for /test")
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(unicode(acl), u"ACL Suscriptor for /test")
 
     def test_get_acl_no_candidate(self):
