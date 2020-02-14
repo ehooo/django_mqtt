@@ -76,7 +76,7 @@ class PublishTestCase(TestCase):
         self.assertNotEqual(server.status, PROTO_MQTT_CONN_OK)
         auth = Auth.objects.create(user='admin', password='admin1234')
         self.assertEqual(str(auth), 'admin:*********')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(unicode(auth), u'admin:*********')
         client = Client.objects.create(server=server, auth=auth, clean_session=False, keepalive=5)
         self.assertEqual(client.client_id, None)
@@ -123,13 +123,13 @@ class PublishTestCase(TestCase):
         client_id = ClientId.objects.create(name='publisher')
         server = Server.objects.create(host='test.mosquitto.org', port=1883)
         self.assertEqual(str(server), 'mqtt://test.mosquitto.org:1883')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(unicode(server), u'mqtt://test.mosquitto.org:1883')
         self.assertEqual(server.status, PROTO_MQTT_CONN_ERROR_UNKNOWN)
         self.assertNotEqual(server.status, PROTO_MQTT_CONN_OK)
         client = Client.objects.create(server=server, clean_session=True, client_id=client_id)
         self.assertEqual(str(client), 'publisher - mqtt://test.mosquitto.org:1883')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(unicode(client), u'publisher - mqtt://test.mosquitto.org:1883')
 
         topic = Topic.objects.create(name='/test/publish')
@@ -141,7 +141,7 @@ class PublishTestCase(TestCase):
             data.save()
             self.assertEqual(str(data), 'test %(qos)s - /test/publish - publisher - mqtt://test.mosquitto.org:1883' %
                              {'qos': qos})
-            if six.PY2:
+            if six.PY2:  # pragma: no cover
                 self.assertEqual(unicode(data),
                                  u'test %(qos)s - /test/publish - publisher - mqtt://test.mosquitto.org:1883' %
                                  {'qos': qos})

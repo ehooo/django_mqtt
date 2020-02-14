@@ -151,7 +151,7 @@ class Server(models.Model):
     def __str__(self):
         return "mqtt://%s:%s" % (self.host, self.port)
 
-    def __unicode__(self):
+    def __unicode__(self):  # pragma: no cover
         return "mqtt://%s:%s" % (self.host, self.port)
 
 
@@ -167,7 +167,7 @@ class Auth(models.Model):
     def __str__(self):
         return "%s:%s" % (self.user, '*' * len(self.password))
 
-    def __unicode__(self):
+    def __unicode__(self):  # pragma: no cover
         return "%s:%s" % (self.user, '*' * len(self.password))
 
 
@@ -194,7 +194,7 @@ class Client(models.Model):
     def __str__(self):
         return "%s - %s" % (self.client_id, self.server)
 
-    def __unicode__(self):
+    def __unicode__(self):  # pragma: no cover
         return "%s - %s" % (self.client_id, self.server)
 
     def get_mqtt_client(self, empty_client_id=False):
@@ -252,7 +252,7 @@ class Data(models.Model):
     def __str__(self):
         return "%s - %s - %s" % (self.payload, self.topic, self.client)
 
-    def __unicode__(self):
+    def __unicode__(self):  # pragma: no cover
         return "%s - %s - %s" % (self.payload, self.topic, self.client)
 
     def update_remote(self):

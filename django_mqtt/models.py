@@ -53,7 +53,7 @@ class ClientId(SecureSave):
                     return True
         return self.is_public()
 
-    def __unicode__(self):
+    def __unicode__(self):  # pragma: no cover
         return self.name
 
     def __str__(self):
@@ -70,7 +70,7 @@ class Topic(SecureSave):
     wildcard = models.BooleanField(default=False)
     dollar = models.BooleanField(default=False)
 
-    def __unicode__(self):
+    def __unicode__(self):  # pragma: no cover
         return self.name
 
     def __str__(self):
@@ -282,7 +282,7 @@ class ACL(models.Model):
                 allow = self.password == password
         return allow
 
-    def __unicode__(self):
+    def __unicode__(self):  # pragma: no cover
         return "ACL %s for %s" % (dict(PROTO_MQTT_ACC)[self.acc], self.topic)
 
     def __str__(self):
