@@ -131,7 +131,7 @@ class TopicModelsTestCase(TestCase):
 
     def test_topic(self):
         self.assertEqual(str(Topic.objects.create(name='test')), 'test')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(unicode(Topic.objects.create(name='test/one')), u'test/one')
         self.assertEqual(Topic.objects.create(name='/test'), '/test')
         topic = Topic.objects.create(name='/test/one')
@@ -212,7 +212,7 @@ class ClientIdModelsTestCase(TestCase):
         if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') and settings.MQTT_ALLOW_EMPTY_CLIENT_ID:  # pragma: no cover
             ClientId.objects.create(name='')
         self.assertEqual(str(ClientId.objects.create(name='1234')), '1234')
-        if six.PY2:
+        if six.PY2:  # pragma: no cover
             self.assertEqual(unicode(ClientId.objects.create(name='test')), u'test')
         ClientId.objects.create(name=gen_client_id())
 
