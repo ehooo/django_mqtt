@@ -2,10 +2,7 @@ language: python
 
 python:
   - "2.7"
-
-branches:
-  only:
-    - master
+  - "3.7"
 
 before_install:
   - pip install pip --upgrade

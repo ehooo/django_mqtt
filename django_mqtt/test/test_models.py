@@ -1,3 +1,4 @@
+import six
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
@@ -130,7 +131,8 @@ class TopicModelsTestCase(TestCase):
 
     def test_topic(self):
         self.assertEqual(str(Topic.objects.create(name='test')), 'test')
-        self.assertEqual(unicode(Topic.objects.create(name='test/one')), u'test/one')
+        if six.PY2:  # pragma: no cover
+            self.assertEqual(unicode(Topic.objects.create(name='test/one')), u'test/one')
         self.assertEqual(Topic.objects.create(name='/test'), '/test')
         topic = Topic.objects.create(name='/test/one')
         self.assertEqual('/test/one' in topic, True)
@@ -210,7 +212,8 @@ class ClientIdModelsTestCase(TestCase):
         if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') and settings.MQTT_ALLOW_EMPTY_CLIENT_ID:  # pragma: no cover
             ClientId.objects.create(name='')
         self.assertEqual(str(ClientId.objects.create(name='1234')), '1234')
-        self.assertEqual(unicode(ClientId.objects.create(name='test')), u'test')
+        if six.PY2:  # pragma: no cover
+            self.assertEqual(unicode(ClientId.objects.create(name='test')), u'test')
         ClientId.objects.create(name=gen_client_id())
 
     def test_wrong_client_id(self):
@@ -261,7 +264,8 @@ class ACLModelsTestCase(TestCase):
         topic = Topic.objects.create(name='/test')
         acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
         self.assertEqual(str(acl), "ACL Suscriptor for /test")
-        self.assertEqual(unicode(acl), u"ACL Suscriptor for /test")
+        if six.PY2:  # pragma: no cover
+            self.assertEqual(unicode(acl), u"ACL Suscriptor for /test")
 
     def test_get_acl_no_candidate(self):
         Topic.objects.create(name='/test')

@@ -3,6 +3,7 @@ import re
 import struct
 
 import paho.mqtt.client as mqtt
+import six
 
 MQTTTypes = [
     0,
@@ -74,7 +75,7 @@ TOPIC_SEP = '/'
 TOPIC_BEGINNING_DOLLAR = '$'
 WILDCARD_SINGLE_LEVEL = '+'
 WILDCARD_MULTI_LEVEL = '#'
-MQTT_NONE_CHAR = '\x00\x00'
+MQTT_NONE_CHAR = b'\x00\x00'
 
 
 def remaining2list(remain, exception=False):
@@ -160,12 +161,18 @@ def get_string(buff, exception=False):
         str_size, = struct.unpack_from("!H", buff[:2])
         fmt = "!"+("B"*str_size)
         utf8_str = struct.unpack_from(fmt, buff, struct.calcsize("!H"))
-        byte_str = map(chr, utf8_str)
-        utf8_str = ''.join(byte_str).decode('utf8')
+        if six.PY2:  # pragma: no cover
+            byte_str = map(chr, utf8_str)
+            utf8_str = ''.join(byte_str)
+            utf8_str = utf8_str.decode('utf8')
+        else:  # pragma: no cover
+            utf8_str = bytes(utf8_str)
         if MQTT_NONE_CHAR in utf8_str:
             if exception:
                 raise ValueError('char 0x0000 not allowed')
-            utf8_str = utf8_str.replace(MQTT_NONE_CHAR, '')
+            utf8_str = utf8_str.replace(MQTT_NONE_CHAR, b'')
+        if six.PY3:  # pragma: no cover
+            utf8_str = utf8_str.decode()
         return utf8_str
     except UnicodeDecodeError as er:
         if exception:
@@ -180,25 +187,31 @@ def gen_string(uni_str, exception=False):
     if uni_str is None:
         if exception:
             raise TypeError('None not allowed')
-        return ''
+        return b''
     if not hasattr(uni_str, 'encode'):
         if exception:
             raise TypeError('uni_str required function encode(format)')
-        return ''
+        return b''
     try:
         utf8_str = uni_str.encode('utf8')
         if MQTT_NONE_CHAR in utf8_str:
             if exception:
                 raise ValueError('char 0x0000 not allowed')
-            utf8_str = utf8_str.replace(MQTT_NONE_CHAR, '')
+            utf8_str = utf8_str.replace(MQTT_NONE_CHAR, b'')
         str_size = len(utf8_str)
         fmt = "!H"+("B"*str_size)
-        byte_str = map(ord, utf8_str)
+        if six.PY2:  # pragma: no cover
+            byte_str = map(ord, utf8_str)
+        else:  # pragma: no cover
+            byte_str = tuple(utf8_str)
         return struct.pack(fmt, str_size, *byte_str)
     except UnicodeDecodeError as ex:
         if exception:
             raise ex
-    return ''
+    except TypeError as ex:
+        if exception:
+            raise ex
+    return b''
 
 
 def gen_client_id():
