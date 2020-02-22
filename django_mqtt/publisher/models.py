@@ -34,6 +34,24 @@ PROTO_MQTT_CONN_ERROR_TOO_LONG = 211
 PROTO_MQTT_CONN_ERROR_DOWN = 212
 PROTO_MQTT_CONN_ERROR_UNREACHABLE = 213
 
+# See in socket: WSA error codes
+IO_ERROR_MAP = {
+    10004: PROTO_MQTT_CONN_ERROR_INTERRUPTED,
+    10013: PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED,
+    10014: PROTO_MQTT_CONN_ERROR_FAULT_NETWORK,
+    10022: PROTO_MQTT_CONN_ERROR_INVALID,
+    10035: PROTO_MQTT_CONN_ERROR_BLOCK,
+    10036: PROTO_MQTT_CONN_ERROR_BLOCKING,
+    10048: PROTO_MQTT_CONN_ERROR_IN_USE,
+    10054: PROTO_MQTT_CONN_ERROR_RESET,
+    10058: PROTO_MQTT_CONN_ERROR_SHUTDOWN,
+    10060: PROTO_MQTT_CONN_ERROR_TIMEOUT,
+    10061: PROTO_MQTT_CONN_ERROR_REFUSED,
+    10063: PROTO_MQTT_CONN_ERROR_TOO_LONG,
+    10064: PROTO_MQTT_CONN_ERROR_DOWN,
+    10065: PROTO_MQTT_CONN_ERROR_UNREACHABLE,
+}
+
 CERT_REQS = (
     (ssl.CERT_REQUIRED, _('Required')),
     (ssl.CERT_OPTIONAL, _('Optional')),
@@ -281,35 +299,8 @@ class Data(models.Model):
                 self.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
             self.client.server.save()
         except IOError as ex:  # pragma: no cover
-            # See in socket: WSA error codes
-            if ex.errno == 10004:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_INTERRUPTED
-            elif ex.errno == 10013:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_PERMISSION_DENIED
-            elif ex.errno == 10014:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_FAULT_NETWORK
-            elif ex.errno == 10022:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_INVALID
-            elif ex.errno == 10035:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCK
-            elif ex.errno == 10036:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_BLOCKING
-            elif ex.errno == 10048:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_IN_USE
-            elif ex.errno == 10054:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_RESET
-            elif ex.errno == 10058:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_SHUTDOWN
-            elif ex.errno == 10060:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_TIMEOUT
-            elif ex.errno == 10061:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_REFUSED
-            elif ex.errno == 10063:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_TOO_LONG
-            elif ex.errno == 10064:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_DOWN
-            elif ex.errno == 10065:
-                self.client.server.status = PROTO_MQTT_CONN_ERROR_UNREACHABLE
+            if ex.errno in IO_ERROR_MAP:
+                self.client.server.status = IO_ERROR_MAP[ex.errno]
             else:
                 self.client.server.status = PROTO_MQTT_CONN_ERROR_GENERIC
             self.client.server.save()

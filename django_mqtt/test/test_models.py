@@ -155,54 +155,45 @@ class TopicModelsTestCase(TestCase):
             Topic.objects.create(name=wild)
             for topic in topics[wild]:
                 Topic.objects.create(name=topic)
-        topic = Topic.objects.get(name='/+/test')
-        size = 0
-        for t in topic:
-            size += 1
-        self.assertEqual(size, 3)
-        topic = Topic.objects.get(name='/test/+')
-        size = 0
-        for t in topic:
-            size += 1
-        self.assertEqual(size, 2)
-        topic = Topic.objects.get(name='/+')
-        size = 0
-        for t in topic:
-            size += 1
-        self.assertEqual(size, 3)
-        topic = Topic.objects.get(name='#')
-        size = 0
-        for t in topic:
-            size += 1
-        self.assertEqual(size, 9)
-        topic = Topic.objects.create(name='/#')
-        size = 0
-        for t in topic:
-            size += 1
-        self.assertEqual(size, 8)
-        topic = Topic.objects.create(name='+')
-        size = 0
-        for t in topic:
-            size += 1
-        self.assertEqual(size, 1)
-        topic = Topic.objects.create(name='/+/not/#')
-        size = 0
-        for t in topic:
-            size += 1
-        self.assertEqual(size, 1)
+
+        topics = list(Topic.objects.get(name='/test'))
+        self.assertEqual(topics, ['/test'])
+        topics = list(Topic.objects.get(name='/+/test'))
+        self.assertEqual(topics, ['/me/test', '/ok/test', '/test/test'])
+        topics = list(Topic.objects.get(name='/test/+'))
+        self.assertEqual(topics, ['/test/test', '/test/me'])
+        topics = list(Topic.objects.get(name='/+'))
+        self.assertEqual(topics, ['/test', '/alone', '/asdf'])
+        topics = list(Topic.objects.get(name='#'))
+        self.assertEqual(topics, [
+            '/me/test', '/ok/test',
+            '/test/test', '/test/me',
+            '/test', '/alone', '/asdf',
+            '/test/not/match', 'match'
+        ])
+        topics = list(Topic.objects.create(name='/#'))
+        self.assertEqual(topics, [
+            '/me/test', '/ok/test',
+            '/test/test', '/test/me',
+            '/test', '/alone', '/asdf',
+            '/test/not/match'
+        ])
+        topics = list(Topic.objects.create(name='+'))
+        self.assertEqual(topics, ['match'])
+
+        topics = list(Topic.objects.create(name='/+/not/#'))
+        self.assertEqual(topics, ['/test/not/match'])
         Topic.objects.create(name='/test/1/not/2')
         Topic.objects.create(name='/test/1/not/2/3')
         Topic.objects.create(name='/test/1/not/2/3/4')
-        topic = Topic.objects.create(name='/test/+/not/#')
-        size = 0
-        for t in topic:
-            size += 1
-        self.assertEqual(size, 3)
-        topic = Topic.objects.create(name='/test/+/not/+/#')
-        size = 0
-        for t in topic:
-            size += 1
-        self.assertEqual(size, 2)
+        topics = list(Topic.objects.create(name='/test/+/not/#'))
+        self.assertEqual(topics, [
+            '/test/1/not/2', '/test/1/not/2/3', '/test/1/not/2/3/4',
+        ])
+        topics = list(Topic.objects.create(name='/test/+/not/+/#'))
+        self.assertEqual(topics, [
+            '/test/1/not/2/3', '/test/1/not/2/3/4',
+        ])
 
 
 class ClientIdModelsTestCase(TestCase):
@@ -307,7 +298,7 @@ class ACLModelsTestCase(TestCase):
         self.assertEqual(allow, False)
         allow = ACL.get_default(PROTO_MQTT_ACC_SUS, self.user_login)
         self.assertEqual(allow, True)
-        acl.password = '1234'
+        acl.set_password('1234')
         acl.save()
         allow = ACL.get_default(PROTO_MQTT_ACC_SUS)
         self.assertEqual(allow, False)
@@ -315,3 +306,31 @@ class ACLModelsTestCase(TestCase):
         self.assertEqual(allow, True)
         allow = ACL.get_default(PROTO_MQTT_ACC_SUS, password='1234')
         self.assertEqual(allow, True)
+
+    def test_acl_unusable_password_noset(self):
+        topic = Topic.objects.create(name='/test')
+        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
+        self.assertFalse(acl.has_usable_password())
+
+    def test_acl_unusable_password_wrong_set(self):
+        topic = Topic.objects.create(name='/test')
+        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True, password='1234')
+        self.assertFalse(acl.has_usable_password())
+
+    def test_acl_set_unusable_password(self):
+        topic = Topic.objects.create(name='/test')
+        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True, password='1234')
+        acl.set_unusable_password()
+        self.assertFalse(acl.has_usable_password())
+
+    def test_acl_unusable_password_set(self):
+        topic = Topic.objects.create(name='/test')
+        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
+        acl.set_password('1234')
+        self.assertTrue(acl.has_usable_password())
+
+    def test_acl_set_password_encrypt(self):
+        topic = Topic.objects.create(name='/test')
+        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
+        acl.set_password('1234')
+        self.assertNotEqual(acl.password, '1234')

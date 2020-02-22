@@ -1,6 +1,7 @@
 import six
 
 from django.conf import settings
+from django.contrib.auth.hashers import is_password_usable, make_password, check_password
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -209,6 +210,35 @@ class ACL(models.Model):
     class Meta:
         unique_together = ('topic', 'acc')
 
+    def __init__(self, *args, **kwargs):
+        super(ACL, self).__init__(*args, **kwargs)
+        # Stores the raw password if set_password() is called so that it can
+        # be passed to password_changed() after the model is saved.
+        self._password = None
+
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+        self._password = raw_password
+
+    def check_password(self, raw_password):
+        """
+        Return a boolean of whether the raw_password was correct. Handles
+        hashing formats behind the scenes.
+        """
+        def setter(raw_password):  # pragma: no cover
+            self.set_password(raw_password)
+            # Password hash upgrades shouldn't be considered password changes.
+            self._password = None
+            self.save(update_fields=["password"])
+        return check_password(raw_password, self.password, setter)
+
+    def set_unusable_password(self):
+        # Set a value that will never be a valid hash
+        self.password = make_password(None)
+
+    def has_usable_password(self):
+        return is_password_usable(self.password)
+
     @classmethod
     def get_default(cls, acc, user=None, password=None):  # TODO rename
         """
@@ -231,9 +261,6 @@ class ACL(models.Model):
                 if broadcast.filter(acc=acc).exists():
                     broadcast_acl = broadcast.get(acc=acc)
                     allow = broadcast_acl.has_permission(user=user, password=password)
-            else:
-                for acl in broadcast:
-                    allow &= acl.has_permission(user=user, password=password)
         except Topic.DoesNotExist:
             pass
         return allow
@@ -279,7 +306,7 @@ class ACL(models.Model):
                 else:
                     allow = not self.allow
             if self.password and password:
-                allow = self.password == password
+                allow = self.check_password(password)
         return allow
 
     def __unicode__(self):  # pragma: no cover
