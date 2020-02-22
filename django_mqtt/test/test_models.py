@@ -144,6 +144,11 @@ class TopicModelsTestCase(TestCase):
         self.assertRaises(ValidationError, Topic.objects.create, name='/')
         self.assertRaises(ValidationError, Topic.objects.create, name='')
 
+    def assertListEqual(self, list1, list2, msg=None):
+        self.assertEqual(len(list1), len(list2))
+        for item in list1:
+            self.assertIn(item, list2)
+
     def test_iterator(self):
         topics = {
             '/+/test': ['/me/test', '/ok/test'],
@@ -157,41 +162,41 @@ class TopicModelsTestCase(TestCase):
                 Topic.objects.create(name=topic)
 
         topics = list(Topic.objects.get(name='/test'))
-        self.assertEqual(topics, ['/test'])
+        self.assertListEqual(topics, ['/test'])
         topics = list(Topic.objects.get(name='/+/test'))
-        self.assertEqual(topics, ['/me/test', '/ok/test', '/test/test'])
+        self.assertListEqual(topics, ['/me/test', '/ok/test', '/test/test'])
         topics = list(Topic.objects.get(name='/test/+'))
-        self.assertEqual(topics, ['/test/test', '/test/me'])
+        self.assertListEqual(topics, ['/test/test', '/test/me'])
         topics = list(Topic.objects.get(name='/+'))
-        self.assertEqual(topics, ['/test', '/alone', '/asdf'])
+        self.assertListEqual(topics, ['/test', '/alone', '/asdf'])
         topics = list(Topic.objects.get(name='#'))
-        self.assertEqual(topics, [
+        self.assertListEqual(topics, [
             '/me/test', '/ok/test',
             '/test/test', '/test/me',
             '/test', '/alone', '/asdf',
             '/test/not/match', 'match'
         ])
         topics = list(Topic.objects.create(name='/#'))
-        self.assertEqual(topics, [
+        self.assertListEqual(topics, [
             '/me/test', '/ok/test',
             '/test/test', '/test/me',
             '/test', '/alone', '/asdf',
             '/test/not/match'
         ])
         topics = list(Topic.objects.create(name='+'))
-        self.assertEqual(topics, ['match'])
+        self.assertListEqual(topics, ['match'])
 
         topics = list(Topic.objects.create(name='/+/not/#'))
-        self.assertEqual(topics, ['/test/not/match'])
+        self.assertListEqual(topics, ['/test/not/match'])
         Topic.objects.create(name='/test/1/not/2')
         Topic.objects.create(name='/test/1/not/2/3')
         Topic.objects.create(name='/test/1/not/2/3/4')
         topics = list(Topic.objects.create(name='/test/+/not/#'))
-        self.assertEqual(topics, [
+        self.assertListEqual(topics, [
             '/test/1/not/2', '/test/1/not/2/3', '/test/1/not/2/3/4',
         ])
         topics = list(Topic.objects.create(name='/test/+/not/+/#'))
-        self.assertEqual(topics, [
+        self.assertListEqual(topics, [
             '/test/1/not/2/3', '/test/1/not/2/3/4',
         ])
 
