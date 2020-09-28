@@ -200,6 +200,17 @@ class TopicModelsTestCase(TestCase):
             '/test/1/not/2/3', '/test/1/not/2/3/4',
         ])
 
+    def test_delete(self):
+        topic = Topic.objects.create(name='topic')
+        self.assertEqual(1, Topic.objects.count())
+        topic.delete()
+        self.assertEqual(0, Topic.objects.count())
+
+    def test_delete_memory(self):
+        topic = Topic(name='topic')
+        self.assertEqual(0, Topic.objects.count())
+        self.assertRaisesMessage(TypeError, "Model instances without primary key value are unhashable", topic.delete)
+
 
 class ClientIdModelsTestCase(TestCase):
     WRONG_CLIENT_ID_WILDCARD = ['012345678901234567890123456789', '/', '+', '#']
