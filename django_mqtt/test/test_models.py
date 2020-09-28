@@ -209,7 +209,7 @@ class TopicModelsTestCase(TestCase):
     def test_delete_memory(self):
         topic = Topic(name='topic')
         self.assertEqual(0, Topic.objects.count())
-        self.assertRaisesMessage(TypeError, "Model instances without primary key value are unhashable", topic.delete)
+        self.assertRaisesMessage(TypeError, "Topic object can't be deleted because its id attribute is set to None.", topic.delete)
 
 
 class ClientIdModelsTestCase(TestCase):
