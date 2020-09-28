@@ -84,6 +84,11 @@ class Topic(SecureSave):
             return self.name == other
         return False
 
+    def __hash__(self):
+        if self._get_pk_val() is None:
+            raise TypeError("Model instances without primary key value are unhashable")
+        return hash(self._get_pk_val())
+
     def __lt__(self, other):
         comp = None
         if isinstance(other, Topic):
