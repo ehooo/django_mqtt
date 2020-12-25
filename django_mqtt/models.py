@@ -1,5 +1,3 @@
-import six
-
 from django.conf import settings
 from django.contrib.auth.hashers import is_password_usable, make_password, check_password
 from django.contrib.auth.models import Group
@@ -80,8 +78,10 @@ class Topic(SecureSave):
     def __eq__(self, other):
         if isinstance(other, Topic):
             return self.name == other.name
-        elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
+        elif isinstance(other, str):
             return self.name == other
+        elif isinstance(other, bytes):
+            return self.name == other.decode()
         return False
 
     def __hash__(self):
@@ -93,8 +93,10 @@ class Topic(SecureSave):
         comp = None
         if isinstance(other, Topic):
             comp = other
-        elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
+        elif isinstance(other, str):
             comp = Topic(name=other)
+        elif isinstance(other, bytes):
+            comp = Topic(name=other.decode())
         if not comp or not comp.is_wildcard():
             return False
         return self in comp
@@ -107,8 +109,10 @@ class Topic(SecureSave):
             return False
         if isinstance(other, Topic):
             return other in self
-        elif isinstance(other, six.string_types) or isinstance(other, six.text_type):
+        elif isinstance(other, str):
             return Topic(other) in self
+        elif isinstance(other, bytes):
+            return Topic(name=other.decode()) in self
         return False
 
     def is_wildcard(self):
@@ -121,8 +125,10 @@ class Topic(SecureSave):
         comp = None
         if isinstance(item, Topic):
             comp = item
-        elif isinstance(item, six.string_types) or isinstance(item, six.text_type):
+        elif isinstance(item, str):
             comp = Topic(name=item)
+        elif isinstance(item, bytes):
+            comp = Topic(name=item.decode())
         if not comp:
             return False
 
@@ -280,10 +286,12 @@ class ACL(models.Model):
 
     @classmethod
     def get_acl(cls, topic, acc=PROTO_MQTT_ACC_PUB):
-        if isinstance(topic, six.string_types) or isinstance(topic, six.text_type):
+        if isinstance(topic, str):
             topic, is_new = Topic.objects.get_or_create(name=topic)
+        elif isinstance(topic, bytes):
+            topic = Topic.objects.get_or_create(name=topic.decode())
         elif not isinstance(topic, Topic):
-            raise ValueError('topic must be Topic or String')
+            raise ValueError('topic must be Topic, String or Bytes')
         candidates = []
         try:
             candidates = [ACL.objects.get(topic=topic, acc=acc)]

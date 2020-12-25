@@ -3,7 +3,6 @@ import re
 import struct
 
 import paho.mqtt.client as mqtt
-import six
 
 MQTTTypes = [
     0,
@@ -161,18 +160,12 @@ def get_string(buff, exception=False):
         str_size, = struct.unpack_from("!H", buff[:2])
         fmt = "!"+("B"*str_size)
         utf8_str = struct.unpack_from(fmt, buff, struct.calcsize("!H"))
-        if six.PY2:  # pragma: no cover
-            byte_str = map(chr, utf8_str)
-            utf8_str = ''.join(byte_str)
-            utf8_str = utf8_str.decode('utf8')
-        else:  # pragma: no cover
-            utf8_str = bytes(utf8_str)
+        utf8_str = bytes(utf8_str)
         if MQTT_NONE_CHAR in utf8_str:
             if exception:
                 raise ValueError('char 0x0000 not allowed')
             utf8_str = utf8_str.replace(MQTT_NONE_CHAR, b'')
-        if six.PY3:  # pragma: no cover
-            utf8_str = utf8_str.decode()
+        utf8_str = utf8_str.decode()
         return utf8_str
     except UnicodeDecodeError as er:
         if exception:
@@ -200,10 +193,7 @@ def gen_string(uni_str, exception=False):
             utf8_str = utf8_str.replace(MQTT_NONE_CHAR, b'')
         str_size = len(utf8_str)
         fmt = "!H"+("B"*str_size)
-        if six.PY2:  # pragma: no cover
-            byte_str = map(ord, utf8_str)
-        else:  # pragma: no cover
-            byte_str = tuple(utf8_str)
+        byte_str = tuple(utf8_str)
         return struct.pack(fmt, str_size, *byte_str)
     except UnicodeDecodeError as ex:
         if exception:
