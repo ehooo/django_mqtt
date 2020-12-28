@@ -7,37 +7,37 @@ from django_mqtt.publisher.models import Client
 
 
 def on_connect(client, userdata, flags, rc):
-    print "Hi", client._client_id, userdata, flags, rc
+    print("Hi", client._client_id, userdata, flags, rc)
 
 
 def on_disconnect(client, userdata, rc):
-    print "Bye", client._client_id, userdata, rc
+    print("Bye", client._client_id, userdata, rc)
 
 
 def on_message(client, userdata, message):
-    print "Msg", client._client_id, userdata
-    print "mid", message.mid, "dup:", message.dup, "QoS:", message.qos
-    print "retain", message.retain, "state", message.state
-    print "timestamp", message.timestamp
-    print "topic", message.topic
-    print "payload", message.payload
-    print "============================="
+    print("Msg", client._client_id, userdata)
+    print("mid", message.mid, "dup:", message.dup, "QoS:", message.qos)
+    print("retain", message.retain, "state", message.state)
+    print("timestamp", message.timestamp)
+    print("topic", message.topic)
+    print("payload", message.payload)
+    print("=============================")
 
 
 def on_publish(client, userdata, mid):
-    print "Publish", client._client_id, userdata, mid
+    print("Publish", client._client_id, userdata, mid)
 
 
 def on_subscribe(client, userdata, mid, granted_qos):
-    print "Subscribe", client._client_id, userdata, mid, granted_qos
+    print("Subscribe", client._client_id, userdata, mid, granted_qos)
 
 
 def on_unsubscribe(client, userdata, mid):
-    print "Unsubscribe", client._client_id, userdata, mid
+    print("Unsubscribe", client._client_id, userdata, mid)
 
 
 def on_log(client, userdata, level, buf):
-    print "Log", client._client_id, userdata, level, buf
+    print("Log", client._client_id, userdata, level, buf)
 
 
 class Command(BaseCommand):
