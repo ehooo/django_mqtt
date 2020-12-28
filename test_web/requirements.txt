@@ -1,4 +1,6 @@
-django-extensions==1.6.1
-virtualenv==14.0.1
-gunicorn==19.10.0
-coverage==4.0.3
+django-extensions
+virtualenv
+gunicorn
+coverage
+Werkzeug
+ipdb
