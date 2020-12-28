@@ -52,9 +52,6 @@ class ClientId(SecureSave):
                     return True
         return self.is_public()
 
-    def __unicode__(self):  # pragma: no cover
-        return self.name
-
     def __str__(self):
         return self.name
 
@@ -68,9 +65,6 @@ class Topic(SecureSave):
     name = models.CharField(max_length=1024, validators=[TopicValidator()], db_index=True, unique=True, blank=False)
     wildcard = models.BooleanField(default=False)
     dollar = models.BooleanField(default=False)
-
-    def __unicode__(self):  # pragma: no cover
-        return self.name
 
     def __str__(self):
         return self.name
@@ -321,9 +315,6 @@ class ACL(models.Model):
             if self.password and password:
                 allow = self.check_password(password)
         return allow
-
-    def __unicode__(self):  # pragma: no cover
-        return "ACL %s for %s" % (dict(PROTO_MQTT_ACC)[self.acc], self.topic)
 
     def __str__(self):
         return "ACL %s for %s" % (dict(PROTO_MQTT_ACC)[self.acc], self.topic)

@@ -169,9 +169,6 @@ class Server(models.Model):
     def __str__(self):
         return "mqtt://%s:%s" % (self.host, self.port)
 
-    def __unicode__(self):  # pragma: no cover
-        return "mqtt://%s:%s" % (self.host, self.port)
-
 
 class Auth(models.Model):
     """
@@ -183,9 +180,6 @@ class Auth(models.Model):
     password = models.CharField(max_length=1024, blank=True, null=True)
 
     def __str__(self):
-        return "%s:%s" % (self.user, '*' * len(self.password))
-
-    def __unicode__(self):  # pragma: no cover
         return "%s:%s" % (self.user, '*' * len(self.password))
 
 
@@ -210,9 +204,6 @@ class Client(models.Model):
     clean_session = models.BooleanField(default=True)
 
     def __str__(self):
-        return "%s - %s" % (self.client_id, self.server)
-
-    def __unicode__(self):  # pragma: no cover
         return "%s - %s" % (self.client_id, self.server)
 
     def get_mqtt_client(self, empty_client_id=False):
