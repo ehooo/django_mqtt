@@ -6,7 +6,6 @@ python:
   - "3.9"
 
 env:
-  - DJANGO_VERSION=1.11
   - DJANGO_VERSION=2.2
   - DJANGO_VERSION=3.0
   - DJANGO_VERSION=3.1
