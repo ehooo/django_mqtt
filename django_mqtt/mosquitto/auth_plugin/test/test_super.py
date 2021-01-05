@@ -1,12 +1,12 @@
 
 from django.contrib.auth.models import User
 from django.test import TestCase, Client
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 
 
 class AdminTestCase(TestCase):
     def setUp(self):
-        self.url_testing = reverse('mqtt_superuser')
+        self.url_testing = reverse('django_mqtt:mqtt_superuser')
         self.client = Client()
 
     def test_user_good(self):

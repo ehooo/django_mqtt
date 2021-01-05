@@ -150,7 +150,7 @@ class CommandUpdaterTestCase(TestCase):
     def setUp(self):
         self.command = CommandUpdater()
         self.message = MQTTMessage()
-        self.message.topic = '/topic/name'
+        self.message.topic = b'/topic/name'
         self.message.qos = 0
         self.message.payload = 'payload'
 
@@ -196,7 +196,7 @@ class CommandUpdaterTestCase(TestCase):
         self.command.client_db = client
         topic = Topic.objects.create(name=self.message.topic)
         Data.objects.create(client=client, topic=topic, payload='initial payload')
-        self.message.topic = '/new/topic'
+        self.message.topic = b'/new/topic'
         self.assertIsNone(self.command.on_message(None, None, self.message))
         self.assertEqual(Client.objects.count(), 1)
         self.assertEqual(Topic.objects.count(), 1)

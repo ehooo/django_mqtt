@@ -320,16 +320,6 @@ class ACLModelsTestCase(TestCase):
         allow = ACL.get_default(PROTO_MQTT_ACC_SUS, password='1234')
         self.assertEqual(allow, True)
 
-    def test_acl_unusable_password_noset(self):
-        topic = Topic.objects.create(name='/test')
-        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
-        self.assertFalse(acl.has_usable_password())
-
-    def test_acl_unusable_password_wrong_set(self):
-        topic = Topic.objects.create(name='/test')
-        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True, password='1234')
-        self.assertFalse(acl.has_usable_password())
-
     def test_acl_set_unusable_password(self):
         topic = Topic.objects.create(name='/test')
         acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True, password='1234')

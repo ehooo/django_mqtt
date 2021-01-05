@@ -5,6 +5,7 @@ import paho.mqtt.client as mqtt
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.db import models
+from django.utils.crypto import get_random_string
 from django.utils.translation import ugettext_lazy as _
 from django_mqtt.models import ClientId, Topic
 from django_mqtt.protocol import MQTT_QoS0, MQTT_QoS1, MQTT_QoS2
@@ -277,7 +278,16 @@ class Data(models.Model):
             mqtt_publish.send(sender=Client.__class__, client=self.client, userdata=cli._userdata, mid=mid)
             cli.loop_write()
             if not self.client.clean_session and not self.client.client_id:
-                name = cli._client_id.split('/')[-1]  # Filter for auto-gen in format paho/CLIENT_ID
+                if hasattr(cli, '_client_id') and cli._client_id:
+                    # Filter for auto-gen in format paho/CLIENT_ID
+                    if isinstance(cli._client_id, str):
+                        name = cli._client_id.split('/')[-1]
+                    elif isinstance(cli._client_id, bytes):
+                        name = cli._client_id.split(b'/')[-1].decode('utf8')
+                    else:
+                        name = get_random_string(length=20)
+                else:
+                    name = get_random_string(length=20)
                 cli_id, is_new = ClientId.objects.get_or_create(name=name)
                 self.client.client_id = cli_id
                 self.client.save()

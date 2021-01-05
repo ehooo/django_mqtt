@@ -1,6 +1,5 @@
 django-extensions
 virtualenv
-gunicorn
 coverage
 Werkzeug
 ipdb

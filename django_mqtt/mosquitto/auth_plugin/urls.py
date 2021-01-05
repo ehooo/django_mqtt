@@ -1,6 +1,8 @@
 from django.conf.urls import url
 import django_mqtt.mosquitto.auth_plugin.views as views
 
+app_name = 'django_mqtt'
+
 urlpatterns = [
     url(r'^auth$', views.Auth.as_view(), name='mqtt_auth'),
     url(r'^superuser$', views.Superuser.as_view(), name='mqtt_superuser'),

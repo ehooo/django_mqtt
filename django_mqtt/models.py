@@ -255,7 +255,7 @@ class ACL(models.Model):
         if hasattr(settings, 'MQTT_ACL_ALLOW'):
             allow = settings.MQTT_ACL_ALLOW
         if hasattr(settings, 'MQTT_ACL_ALLOW_ANONIMOUS'):
-            if user is None or user.is_anonymous():
+            if user is None or user.is_anonymous:
                 allow = settings.MQTT_ACL_ALLOW_ANONIMOUS & allow
                 if not allow and not password:
                     return allow
