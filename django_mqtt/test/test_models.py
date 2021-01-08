@@ -1,4 +1,3 @@
-import six
 from django.conf import settings
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
@@ -131,8 +130,6 @@ class TopicModelsTestCase(TestCase):
 
     def test_topic(self):
         self.assertEqual(str(Topic.objects.create(name='test')), 'test')
-        if six.PY2:  # pragma: no cover
-            self.assertEqual(unicode(Topic.objects.create(name='test/one')), u'test/one')
         self.assertEqual(Topic.objects.create(name='/test'), '/test')
         topic = Topic.objects.create(name='/test/one')
         self.assertEqual('/test/one' in topic, True)
@@ -209,7 +206,11 @@ class TopicModelsTestCase(TestCase):
     def test_delete_memory(self):
         topic = Topic(name='topic')
         self.assertEqual(0, Topic.objects.count())
-        self.assertRaisesMessage(TypeError, "Topic object can't be deleted because its id attribute is set to None.", topic.delete)
+        self.assertRaisesMessage(
+            AssertionError,
+            "Topic object can't be deleted because its id attribute is set to None.",
+            topic.delete
+        )
 
 
 class ClientIdModelsTestCase(TestCase):
@@ -219,8 +220,6 @@ class ClientIdModelsTestCase(TestCase):
         if hasattr(settings, 'MQTT_ALLOW_EMPTY_CLIENT_ID') and settings.MQTT_ALLOW_EMPTY_CLIENT_ID:  # pragma: no cover
             ClientId.objects.create(name='')
         self.assertEqual(str(ClientId.objects.create(name='1234')), '1234')
-        if six.PY2:  # pragma: no cover
-            self.assertEqual(unicode(ClientId.objects.create(name='test')), u'test')
         ClientId.objects.create(name=gen_client_id())
 
     def test_wrong_client_id(self):
@@ -271,8 +270,6 @@ class ACLModelsTestCase(TestCase):
         topic = Topic.objects.create(name='/test')
         acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
         self.assertEqual(str(acl), "ACL Suscriptor for /test")
-        if six.PY2:  # pragma: no cover
-            self.assertEqual(unicode(acl), u"ACL Suscriptor for /test")
 
     def test_get_acl_no_candidate(self):
         Topic.objects.create(name='/test')
@@ -322,16 +319,6 @@ class ACLModelsTestCase(TestCase):
         self.assertEqual(allow, True)
         allow = ACL.get_default(PROTO_MQTT_ACC_SUS, password='1234')
         self.assertEqual(allow, True)
-
-    def test_acl_unusable_password_noset(self):
-        topic = Topic.objects.create(name='/test')
-        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True)
-        self.assertFalse(acl.has_usable_password())
-
-    def test_acl_unusable_password_wrong_set(self):
-        topic = Topic.objects.create(name='/test')
-        acl = ACL.objects.create(topic=topic, acc=PROTO_MQTT_ACC_SUS, allow=True, password='1234')
-        self.assertFalse(acl.has_usable_password())
 
     def test_acl_set_unusable_password(self):
         topic = Topic.objects.create(name='/test')

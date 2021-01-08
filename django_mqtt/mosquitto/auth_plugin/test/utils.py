@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User, Group
 from django.test import TestCase, Client, override_settings
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 
 from django_mqtt import models
 
@@ -14,9 +14,9 @@ class BasicAuthWithTopicTestCase(TestCase):
         User.objects.create_user(self.username, password=self.password)
         self.topic = '/topic'
         models.Topic.objects.create(name=self.topic)
-        self.url_testing = reverse('mqtt_auth')
+        self.url_testing = reverse('django_mqtt:mqtt_auth')
         self.client = Client()
-        self.acc = None
+        self.acc = ''
         self.acc_allow = True
 
     def get_post_data(self):
@@ -95,7 +95,7 @@ class BasicAuthWithTopicTestCase(TestCase):
     def _test_login_wrong_topic(self):
         return self.client.post(self.url_testing, {'username': self.username,
                                                    'password': self.password,
-                                                   'topic': None,
+                                                   'topic': '',
                                                    'acc': self.acc
                                                    })
 

@@ -6,6 +6,6 @@ urlpatterns = [
     # url(r'^$', 'test_web.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
 
-    url(r'^admin/', include(admin.site.urls)),
-    url(r'^mqtt/', include('django_mqtt.mosquitto.auth_plugin.urls')),
+    url(r'^admin/', admin.site.urls),
+    url(r'^mqtt/', include('django_mqtt.mosquitto.auth_plugin.urls', namespace='mqtt')),
 ]

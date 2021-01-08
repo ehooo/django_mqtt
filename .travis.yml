@@ -1,8 +1,14 @@
 language: python
 
 python:
-  - "2.7"
   - "3.7"
+  - "3.8"
+  - "3.9"
+
+env:
+  - DJANGO_VERSION=2.2
+  - DJANGO_VERSION=3.0
+  - DJANGO_VERSION=3.1
 
 before_install:
   - pip install pip --upgrade
@@ -11,6 +17,7 @@ install:
   - python setup.py install
 
 before_script:
+  - pip install -q Django==$DJANGO_VERSION
   - pip install -r requirements.txt
   - pip install -r test_web/requirements.txt
   - wget http://test.mosquitto.org/ssl/mosquitto.org.crt -O ./test_web/ca/mosquitto.org.crt

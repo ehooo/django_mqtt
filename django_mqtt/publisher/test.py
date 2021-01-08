@@ -1,7 +1,6 @@
 import os
 import ssl
 
-import six
 from django.conf import settings
 from django.core.files import File
 from django.test import TestCase
@@ -76,8 +75,6 @@ class PublishTestCase(TestCase):
         self.assertNotEqual(server.status, PROTO_MQTT_CONN_OK)
         auth = Auth.objects.create(user='admin', password='admin1234')
         self.assertEqual(str(auth), 'admin:*********')
-        if six.PY2:  # pragma: no cover
-            self.assertEqual(unicode(auth), u'admin:*********')
         client = Client.objects.create(server=server, auth=auth, clean_session=False, keepalive=5)
         self.assertEqual(client.client_id, None)
 
@@ -123,14 +120,10 @@ class PublishTestCase(TestCase):
         client_id = ClientId.objects.create(name='publisher')
         server = Server.objects.create(host='test.mosquitto.org', port=1883)
         self.assertEqual(str(server), 'mqtt://test.mosquitto.org:1883')
-        if six.PY2:  # pragma: no cover
-            self.assertEqual(unicode(server), u'mqtt://test.mosquitto.org:1883')
         self.assertEqual(server.status, PROTO_MQTT_CONN_ERROR_UNKNOWN)
         self.assertNotEqual(server.status, PROTO_MQTT_CONN_OK)
         client = Client.objects.create(server=server, clean_session=True, client_id=client_id)
         self.assertEqual(str(client), 'publisher - mqtt://test.mosquitto.org:1883')
-        if six.PY2:  # pragma: no cover
-            self.assertEqual(unicode(client), u'publisher - mqtt://test.mosquitto.org:1883')
 
         topic = Topic.objects.create(name='/test/publish')
         for qos in [MQTT_QoS0, MQTT_QoS1, MQTT_QoS2]:
@@ -141,10 +134,6 @@ class PublishTestCase(TestCase):
             data.save()
             self.assertEqual(str(data), 'test %(qos)s - /test/publish - publisher - mqtt://test.mosquitto.org:1883' %
                              {'qos': qos})
-            if six.PY2:  # pragma: no cover
-                self.assertEqual(unicode(data),
-                                 u'test %(qos)s - /test/publish - publisher - mqtt://test.mosquitto.org:1883' %
-                                 {'qos': qos})
             data.update_remote()
 
             server = Server.objects.get(pk=server.pk)
@@ -161,7 +150,7 @@ class CommandUpdaterTestCase(TestCase):
     def setUp(self):
         self.command = CommandUpdater()
         self.message = MQTTMessage()
-        self.message.topic = '/topic/name'
+        self.message.topic = b'/topic/name'
         self.message.qos = 0
         self.message.payload = 'payload'
 
@@ -207,7 +196,7 @@ class CommandUpdaterTestCase(TestCase):
         self.command.client_db = client
         topic = Topic.objects.create(name=self.message.topic)
         Data.objects.create(client=client, topic=topic, payload='initial payload')
-        self.message.topic = '/new/topic'
+        self.message.topic = b'/new/topic'
         self.assertIsNone(self.command.on_message(None, None, self.message))
         self.assertEqual(Client.objects.count(), 1)
         self.assertEqual(Topic.objects.count(), 1)

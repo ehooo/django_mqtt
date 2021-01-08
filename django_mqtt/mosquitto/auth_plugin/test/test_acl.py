@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from django.test import TestCase, Client, override_settings
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 
 from django_mqtt.mosquitto.auth_plugin.test.utils import BasicAuthWithTopicTestCase
 from django_mqtt import models
@@ -9,7 +9,7 @@ from django_mqtt import models
 class BasicACLWithTopicTestCase(BasicAuthWithTopicTestCase):
     def setUp(self):
         BasicAuthWithTopicTestCase.setUp(self)
-        self.url_testing = reverse('mqtt_acl')
+        self.url_testing = reverse('django_mqtt:mqtt_acl')
 
     def get_post_data(self):
         return {
@@ -24,7 +24,7 @@ class ACLTestCase(TestCase):
         self.username = 'user'
         self.password = 'password'
         User.objects.create_user(self.username, password=self.password)
-        self.url_testing = reverse('mqtt_acl')
+        self.url_testing = reverse('django_mqtt:mqtt_acl')
         self.client = Client()
 
     @override_settings(MQTT_ACL_ALLOW=True)

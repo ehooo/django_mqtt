@@ -43,7 +43,6 @@ class ACLAdminTestCase(TestCase):
             'password2': plain_password,
         }
         url = reverse('admin:django_mqtt_acl_password_change', args=(self.acl.pk,))
-        self.assertFalse(self.acl.has_usable_password())
         self.client.force_login(self.admin_user)
         response = self.client.post(url, data=data)
         self.assertEqual(response.status_code, 302)
