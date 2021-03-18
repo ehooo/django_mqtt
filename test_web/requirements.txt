@@ -3,3 +3,4 @@ virtualenv
 coverage
 Werkzeug
 ipdb
+pygments>=2.7.4 # not directly required, pinned by Snyk to avoid a vulnerability
