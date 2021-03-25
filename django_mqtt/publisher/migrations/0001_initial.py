@@ -7,6 +7,15 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 from django.conf import settings
+
+from django_mqtt.publisher.constants import (
+    CERT_REQS,
+    PROTO_SSL_VERSION,
+    PROTO_MQTT_VERSION,
+    PROTO_MQTT_CONN_STATUS,
+    PROTO_MQTT_QoS,
+)
+
 private_location = settings.BASE_DIR
 if hasattr(settings, 'MQTT_CERTS_ROOT'):
     private_location = settings.MQTT_CERTS_ROOT
@@ -35,15 +44,17 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('keepalive', models.IntegerField(default=60)),
                 ('clean_session', models.BooleanField(default=True)),
-                ('auth', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='publisher.Auth')),
-                ('client_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='django_mqtt.ClientId')),
+                ('auth', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                           to='publisher.Auth')),
+                ('client_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                                to='django_mqtt.ClientId')),
             ],
         ),
         migrations.CreateModel(
             name='Data',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('qos', models.IntegerField(choices=[(0, 'QoS 0: Delivered at most once'), (1, 'QoS 1: Always delivered at least once'), (2, 'QoS 2: Always delivered exactly once')], default=0)),
+                ('qos', models.IntegerField(choices=PROTO_MQTT_QoS, default=0)),
                 ('payload', models.TextField(blank=True, null=True)),
                 ('retain', models.BooleanField(default=False)),
                 ('datetime', models.DateTimeField(auto_now=True)),
@@ -55,11 +66,16 @@ class Migration(migrations.Migration):
             name='SecureConf',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('ca_certs', models.FileField(storage=django.core.files.storage.FileSystemStorage(location=private_location), upload_to=b'ca')),
-                ('cert_reqs', models.IntegerField(choices=[(2, 'Required'), (1, 'Optional'), (0, 'None')], default=2)),
-                ('tls_version', models.IntegerField(choices=[(3, b'v1'), (2, b'v2.3')], default=3)),
-                ('certfile', models.FileField(blank=True, null=True, storage=django.core.files.storage.FileSystemStorage(location=private_location), upload_to=b'certs')),
-                ('keyfile', models.FileField(blank=True, null=True, storage=django.core.files.storage.FileSystemStorage(location=private_location), upload_to=b'keys')),
+                ('ca_certs', models.FileField(
+                    storage=django.core.files.storage.FileSystemStorage(location=private_location), upload_to='ca')),
+                ('cert_reqs', models.IntegerField(choices=CERT_REQS, default=2)),
+                ('tls_version', models.IntegerField(choices=PROTO_SSL_VERSION, default=3)),
+                ('certfile', models.FileField(
+                    blank=True, null=True,
+                    storage=django.core.files.storage.FileSystemStorage(location=private_location), upload_to='certs')),
+                ('keyfile', models.FileField(
+                    blank=True, null=True,
+                    storage=django.core.files.storage.FileSystemStorage(location=private_location), upload_to='keys')),
                 ('ciphers', models.CharField(blank=True, default=None, max_length=1024, null=True)),
             ],
         ),
@@ -69,9 +85,10 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('host', models.CharField(max_length=1024)),
                 ('port', models.IntegerField(default=1883)),
-                ('protocol', models.IntegerField(choices=[(3, b'v3.1'), (4, b'v3.1.1')], default=4)),
-                ('status', models.IntegerField(choices=[(0, 'Connection successful'), (1, 'Connection refused - incorrect protocol version'), (2, 'Connection refused - invalid client identifier'), (3, 'Connection refused - server unavailable'), (4, 'Connection refused - bad username or password'), (5, 'Connection refused - not authorised'), (6, 'Unknown'), (100, 'Connection error'), (191, 'Connection error - Get address info failed'), (200, 'Connection error - The operation was interrupted'), (201, 'Connection error - Permission denied'), (202, 'Connection error - A fault occurred on the network'), (203, 'Connection error - An invalid operation was attempted'), (204, 'Connection error - The socket operation would block'), (205, 'Connection error - A blocking operation is already in progress'), (206, 'Connection error - The network address is in use'), (207, 'Connection error - The connection has been reset'), (208, 'Connection error - The network has been shut down'), (209, 'Connection error - The operation timed out'), (210, 'Connection error - Connection refused'), (211, 'Connection error - The name is too long'), (212, 'Connection error - The host is down'), (213, 'Connection error - The host is unreachable')], default=6)),
-                ('secure', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='publisher.SecureConf')),
+                ('protocol', models.IntegerField(choices=PROTO_MQTT_VERSION, default=4)),
+                ('status', models.IntegerField(choices=PROTO_MQTT_CONN_STATUS, default=6)),
+                ('secure', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE,
+                                             to='publisher.SecureConf')),
             ],
         ),
         migrations.AddField(
