@@ -6,12 +6,14 @@ from django.core.files import File
 from django.test import TestCase
 from django_mqtt.models import Topic
 from django_mqtt.protocol import MQTT_QoS0, MQTT_QoS1, MQTT_QoS2
+from django_mqtt.publisher.constants import (
+    CERT_REQS,
+    PROTO_SSL_VERSION,
+    PROTO_MQTT_CONN_OK,
+    PROTO_MQTT_CONN_ERROR_UNKNOWN,
+)
 from django_mqtt.publisher.management.commands.mqtt_updater import Command as CommandUpdater
 from django_mqtt.publisher.models import (
-    CERT_REQS,
-    PROTO_MQTT_CONN_ERROR_UNKNOWN,
-    PROTO_MQTT_CONN_OK,
-    PROTO_SSL_VERSION,
     Auth,
     Client,
     ClientId,
